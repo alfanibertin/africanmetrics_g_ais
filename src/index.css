@@ -1,0 +1,108 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Playfair Display", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Sophisticated Institutional Silver & Slate Glassmorphism Palette */
+  --color-brand-bg: #cbd5e1; /* Neutral, soothing, and high-end slate gray */
+  --color-brand-card: rgba(15, 23, 42, 0.05);
+  --color-brand-card-hover: rgba(15, 23, 42, 0.1);
+  --color-brand-border: rgba(15, 23, 42, 0.09);
+  --color-brand-border-muted: rgba(15, 23, 42, 0.05);
+  --color-brand-text: #0f172a;
+  --color-brand-muted: #334155;
+  --color-brand-dim: #475569;
+  --color-brand-input: rgba(15, 23, 42, 0.04);
+}
+
+/* Glassmorphism card utilities */
+.glass-panel {
+  background: rgba(30, 41, 59, 0.06); /* smoky slate translucent gray */
+  backdrop-filter: blur(16px) saturate(120%);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 4px 24px -2px rgba(15, 23, 42, 0.03);
+}
+
+.glass-panel-hover:hover {
+  background: rgba(30, 41, 59, 0.12);
+  border-color: rgba(15, 23, 42, 0.15);
+  box-shadow: 0 8px 32px -4px rgba(15, 23, 42, 0.06);
+}
+
+/* Custom scrollbars for a highly polished economic dashboard */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f3f5f8;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.35);
+}
+
+/* Custom scrollbar specifically for Central Country Database to make it nice and visible with a dark/black thumb */
+.database-scroll-container {
+  scrollbar-width: auto;
+  scrollbar-color: #0f172a rgba(15, 23, 42, 0.05);
+}
+
+.database-scroll-container::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.database-scroll-container::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.05);
+  border-radius: 8px;
+}
+
+.database-scroll-container::-webkit-scrollbar-thumb {
+  background: #0f172a; /* Nice dark black thumb */
+  border-radius: 8px;
+  border: 2px solid #cbd5e1; /* Elegant border to separate from track */
+}
+
+.database-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #1e293b; /* Hover state slate black */
+}
+
+/* --- Focus Mode CSS Selector Refinements --- */
+div#root:nth-of-type(1) > div#main-app-container:nth-of-type(1) {
+  background-color: #f2f2f2 !important;
+}
+
+div#root:nth-of-type(1) > div#main-app-container:nth-of-type(1) > div:nth-of-type(3) > div#country-spotlight-card:nth-of-type(6) {
+  background-color: #f4f2f2 !important;
+}
+
+div#root:nth-of-type(1) > div#main-app-container:nth-of-type(1) > div:nth-of-type(3) > div#regional-overview-card:nth-of-type(5) {
+  background-color: #f4f2f2 !important;
+}
+
+div#root:nth-of-type(1) > div#main-app-container:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(4) > div#economic-indicators-card:nth-of-type(1) {
+  background-color: #f4f2f2 !important;
+}
+
+div#root:nth-of-type(1) > div#main-app-container:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(4) > div:nth-of-type(2) > div#africa-map-card:nth-of-type(1) {
+  background-color: #f4f2f2 !important;
+}
+
+div#root:nth-of-type(1) > div#main-app-container:nth-of-type(1) > div:nth-of-type(3) > div#gemini-ai-analyzer-panel:nth-of-type(7) {
+  background-color: #f4f2f2 !important;
+}
+
+div#root:nth-of-type(1) > div#main-app-container:nth-of-type(1) > div:nth-of-type(3) > div#country-data-table-card:nth-of-type(8) {
+  background-color: #f4f2f2 !important;
+}
+

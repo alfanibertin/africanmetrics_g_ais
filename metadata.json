@@ -1,0 +1,6 @@
+{
+  "name": "African Economic Dashboard",
+  "description": "An interactive dashboard showcasing economic indicators across 55 African countries, grouped by region, with charts, spotlight insights, and AI-powered generation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

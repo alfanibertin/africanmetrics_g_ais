@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AESFlagIcon } from './AESFlagIcon';
+import { DataBadge } from './DataBadge';
 import { 
   Globe, 
   TrendingUp, 
@@ -176,9 +177,9 @@ export const AESTradeWITS: React.FC = () => {
         <div className="flex items-center gap-4">
           <AESFlagIcon size="md" />
           <div>
-            <span className="text-[10px] tracking-wider text-amber-800 font-mono uppercase font-bold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/15">
-              World Bank WITS Baseline Data
-            </span>
+            <div className="mb-1">
+              <DataBadge source="static" year={currentData.year} />
+            </div>
             <h3 className="text-base font-bold text-brand-text font-display tracking-tight mt-1.5">
               AES Trade Flows & Commercial Intelligence
             </h3>

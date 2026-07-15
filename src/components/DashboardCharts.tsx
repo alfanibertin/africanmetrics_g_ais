@@ -11,13 +11,16 @@ import {
   LineChart,
   Line,
 } from 'recharts';
-import { REGIONAL_SCREENSHOT_VALUES } from '../data';
+import { COUNTRIES } from '../data';
+import { getRegionalSummaries } from '../lib/aggregations';
+import { Country } from '../types';
 import { TrendingUp, Activity, HelpCircle, Calendar } from 'lucide-react';
 
 interface DashboardChartsProps {
   activeTab: 'gdp' | 'debt' | 'unemployment' | 'overview';
   selectedRegion: string | null;
   onSelectRegion: (region: any) => void;
+  countries?: Country[];
 }
 
 // Simulated real-world high-fidelity time series data (2021-2026) for each region and indicator
@@ -52,6 +55,7 @@ export default function DashboardCharts({
   activeTab,
   selectedRegion,
   onSelectRegion,
+  countries,
 }: DashboardChartsProps) {
   // Track hovered states to enable interactive trend line visualization
   const [hoveredRegion, setHoveredRegion] = useState<string>('All');
@@ -62,52 +66,55 @@ export default function DashboardCharts({
     setHoveredRegion(selectedRegion || 'All');
   }, [selectedRegion]);
 
+  const displayCountries = countries || COUNTRIES;
+  const regionalSummaries = getRegionalSummaries(displayCountries);
+
   // Map our data to Recharts compatible format using official regional colors
   const chartData = [
     {
       name: 'Northern',
       displayName: 'Northern',
-      gdp: REGIONAL_SCREENSHOT_VALUES.Northern.gdp,
-      debt: REGIONAL_SCREENSHOT_VALUES.Northern.debtToGdp,
-      unemployment: REGIONAL_SCREENSHOT_VALUES.Northern.unemployment,
-      population: REGIONAL_SCREENSHOT_VALUES.Northern.population,
+      gdp: regionalSummaries.Northern.gdp,
+      debt: regionalSummaries.Northern.debtToGdp,
+      unemployment: regionalSummaries.Northern.unemployment,
+      population: regionalSummaries.Northern.population,
       color: '#ca8a04', // Sahara Ochre Gold
     },
     {
       name: 'Western',
       displayName: 'Western',
-      gdp: REGIONAL_SCREENSHOT_VALUES.Western.gdp,
-      debt: REGIONAL_SCREENSHOT_VALUES.Western.debtToGdp,
-      unemployment: REGIONAL_SCREENSHOT_VALUES.Western.unemployment,
-      population: REGIONAL_SCREENSHOT_VALUES.Western.population,
+      gdp: regionalSummaries.Western.gdp,
+      debt: regionalSummaries.Western.debtToGdp,
+      unemployment: regionalSummaries.Western.unemployment,
+      population: regionalSummaries.Western.population,
       color: '#0f766e', // Gulf Teal
     },
     {
       name: 'Eastern',
       displayName: 'Eastern',
-      gdp: REGIONAL_SCREENSHOT_VALUES.Eastern.gdp,
-      debt: REGIONAL_SCREENSHOT_VALUES.Eastern.debtToGdp,
-      unemployment: REGIONAL_SCREENSHOT_VALUES.Eastern.unemployment,
-      population: REGIONAL_SCREENSHOT_VALUES.Eastern.population,
+      gdp: regionalSummaries.Eastern.gdp,
+      debt: regionalSummaries.Eastern.debtToGdp,
+      unemployment: regionalSummaries.Eastern.unemployment,
+      population: regionalSummaries.Eastern.population,
       color: '#d97706', // Sunrise Amber
     },
     {
       name: 'Central',
       displayName: 'Central',
-      gdp: REGIONAL_SCREENSHOT_VALUES.Central.gdp,
-      debt: REGIONAL_SCREENSHOT_VALUES.Central.debtToGdp,
-      unemployment: REGIONAL_SCREENSHOT_VALUES.Central.unemployment,
-      population: REGIONAL_SCREENSHOT_VALUES.Central.population,
+      gdp: regionalSummaries.Central.gdp,
+      debt: regionalSummaries.Central.debtToGdp,
+      unemployment: regionalSummaries.Central.unemployment,
+      population: regionalSummaries.Central.population,
       color: '#15803d', // Congo Forest Green
     },
     {
       name: 'Southern',
       displayName: 'Southern',
-      gdp: REGIONAL_SCREENSHOT_VALUES.Southern.gdp,
+      gdp: regionalSummaries.Southern.gdp,
       text: 'Southern',
-      debt: REGIONAL_SCREENSHOT_VALUES.Southern.debtToGdp,
-      unemployment: REGIONAL_SCREENSHOT_VALUES.Southern.unemployment,
-      population: REGIONAL_SCREENSHOT_VALUES.Southern.population,
+      debt: regionalSummaries.Southern.debtToGdp,
+      unemployment: regionalSummaries.Southern.unemployment,
+      population: regionalSummaries.Southern.population,
       color: '#9a3412', // Terracotta Clay
     },
   ];

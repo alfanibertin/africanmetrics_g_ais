@@ -37,12 +37,14 @@ export default function SahelDeepSeekAI({ corridor, securityRatio, aesStates }: 
   const [response, setResponse] = useState<string>('');
   const [engine, setEngine] = useState<string>('');
   const [notice, setNotice] = useState<string | null>(null);
+  const [isLive, setIsLive] = useState<boolean>(false);
 
   const handleGenerateInsights = async () => {
     setIsLoading(true);
     setResponse('');
     setNotice(null);
     setEngine('');
+    setIsLive(false);
 
     try {
       const res = await fetch('/api/sahel-deepseek-insights', {
@@ -62,6 +64,7 @@ export default function SahelDeepSeekAI({ corridor, securityRatio, aesStates }: 
       if (data.success) {
         setResponse(data.analysis);
         setEngine(data.engine || 'DeepSeek AI Engine');
+        setIsLive(!!data.isLive);
         if (data.notice) {
           setNotice(data.notice);
         }
@@ -135,8 +138,8 @@ export default function SahelDeepSeekAI({ corridor, securityRatio, aesStates }: 
           <AESFlagIcon size="md" />
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold font-mono tracking-wider text-amber-700 uppercase bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
-                Open Source AI Driven Research
+              <span className="text-[10px] font-bold font-mono tracking-wider text-emerald-700 uppercase bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                DeepSeek V3 (Live)
               </span>
               <span className="text-[10px] text-emerald-700 font-mono tracking-wider uppercase flex items-center gap-1.5 font-semibold">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
@@ -270,6 +273,24 @@ export default function SahelDeepSeekAI({ corridor, securityRatio, aesStates }: 
                 </p>
               </div>
             </div>
+          )}
+
+          {/* Prominent Colored Banner above the output */}
+          {response && (
+            isLive ? (
+              <div className="mb-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 text-xs rounded-xl p-3 flex items-center gap-2.5 shadow-2xs font-semibold">
+                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse shrink-0" />
+                <span>LIVE AI INTELLIGENCE MODE — Powered by verified DeepSeek V3 API.</span>
+              </div>
+            ) : (
+              <div className="mb-4 bg-amber-500/10 border border-amber-500/30 text-amber-800 text-xs rounded-xl p-3 flex items-start gap-2.5 shadow-2xs font-semibold">
+                <span className="w-2 h-2 rounded-full bg-amber-600 animate-pulse shrink-0 mt-1" />
+                <div>
+                  <span className="block">SIMULATED SCENARIO MODE</span>
+                  <span className="text-[10px] text-brand-dim font-normal block mt-0.5">Illustrative analysis only. Configure a live API key for real-time model synthesis.</span>
+                </div>
+              </div>
+            )
           )}
 
           {/* Engine Header / Badge */}

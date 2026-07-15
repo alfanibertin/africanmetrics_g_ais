@@ -22,8 +22,10 @@ import {
   Wrench,
   Briefcase,
 } from 'lucide-react';
-import { COUNTRIES, REGIONAL_SCREENSHOT_VALUES, getCountryFlag, getCountryISO2 } from './data';
+import { COUNTRIES, getCountryFlag, getCountryISO2 } from './data';
+import { getRegionalSummaries } from './lib/aggregations';
 import { Country } from './types';
+import { DataBadge } from './components/DataBadge';
 import AfricaMap from './components/AfricaMap';
 import AIAnalyzer from './components/AIAnalyzer';
 import DashboardCharts from './components/DashboardCharts';
@@ -108,6 +110,7 @@ export default function App() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [bulletins, setBulletins] = useState<Bulletin[]>([]);
+  const [isLatestDataLive, setIsLatestDataLive] = useState<boolean>(false);
   const [showNotification, setShowNotification] = useState<string | null>(null);
 
   // Sorting State
@@ -121,9 +124,10 @@ export default function App() {
   // Page 4: Detailed Country Profile State variables
   const [detailCountryId, setDetailCountryId] = useState<string>('nigeria');
 
-  // Computed Values - Regional Averages for rendering (Matches screenshots)
+  // Computed Values - Regional Averages for rendering
   const regionsSummary = useMemo(() => {
-    return Object.entries(REGIONAL_SCREENSHOT_VALUES).map(([name, val]) => ({
+    const regionalSummaries = getRegionalSummaries(countries);
+    return Object.entries(regionalSummaries).map(([name, val]) => ({
       name: name === 'Northern' ? 'North Africa' :
             name === 'Western' ? 'West Africa' :
             name === 'Eastern' ? 'East Africa' :
@@ -146,7 +150,12 @@ export default function App() {
                 name === 'Eastern' ? 'bg-[#d97706]/5 border-[#d97706]/40' :
                 name === 'Central' ? 'bg-[#15803d]/5 border-[#15803d]/40' : 'bg-[#9a3412]/5 border-[#9a3412]/40',
     }));
-  }, []);
+  }, [countries]);
+
+  const selectedRegionSummary = useMemo(() => {
+    if (!selectedRegion) return null;
+    return getRegionalSummaries(countries)[selectedRegion];
+  }, [selectedRegion, countries]);
 
   // Filtered countries based on search and regional selection
   const filteredCountries = useMemo(() => {
@@ -211,40 +220,57 @@ export default function App() {
       c.unemployment,
       c.debtToGdp,
       c.growthRate,
-      `"${c.highlight.replace(/"/g, '""')}"`
+      c.highlight
     ]);
 
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => 
+        row.map(val => {
+          const str = String(val);
+          if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+            return `"${str.replace(/"/g, '""')}"`;
+          }
+          return str;
+        }).join(',')
+      )
+    ].join('\n');
     
-    const encodedUri = encodeURI(csvContent);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    link.setAttribute("href", url);
     link.setAttribute("download", `african_economic_data_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 
     triggerNotification('Economic database exported successfully in CSV format!');
   };
 
   // Reset/Refresh Data
   const handleRefresh = () => {
+    // 1. Reset state synchronously first
     setIsRefreshing(true);
+    setCountries(COUNTRIES);
+    setBulletins([]);
+    setLastUpdated(''); // reset to blank/null for immediate visual feedback
+    setSelectedRegion(null);
+    setSearchQuery('');
+    setSahelTradeCorridor('togo');
+    setSahelSecurityBudgetRatio(45);
+    setIsLatestDataLive(false);
+
+    // 2. Clear loader and restore baseline timestamp after dynamic feedback delay
     setTimeout(() => {
-      setCountries(COUNTRIES);
-      setBulletins([]);
-      setLastUpdated('6/25/2026 at 6:05:33 AM');
-      setSelectedRegion(null);
-      setSearchQuery('');
-      setSahelTradeCorridor('togo');
-      setSahelSecurityBudgetRatio(45);
       setIsRefreshing(false);
+      setLastUpdated('6/25/2026 at 6:05:33 AM');
       triggerNotification('Dashboard reset to certified baseline economic data.');
     }, 700);
   };
 
-  // Update Economic Data (Server-side Gemini Integration)
+  // Update Economic Data (Server-side Gemini & World Bank Integration)
   const handleUpdateEconomicData = async () => {
     setIsUpdating(true);
     try {
@@ -257,14 +283,15 @@ export default function App() {
       if (data.success) {
         setLastUpdated(data.lastUpdated);
         setBulletins(data.bulletins);
+        setIsLatestDataLive(!!data.isLive);
 
         setCountries(prevCountries => {
           return prevCountries.map(c => {
-            if (data.spotlightChanges[c.id]) {
+            if (data.updatedCountries && data.updatedCountries[c.id]) {
               return {
                 ...c,
-                growthRate: data.spotlightChanges[c.id].growthRate,
-                gdp: data.spotlightChanges[c.id].gdp,
+                gdp: data.updatedCountries[c.id].gdp,
+                year: data.updatedCountries[c.id].year,
               };
             }
             return c;
@@ -273,10 +300,10 @@ export default function App() {
 
         triggerNotification('Successfully updated indicators and generated economic bulletins with Gemini!');
       } else {
-        triggerNotification('Could not connect to Gemini update engine.');
+        triggerNotification('World Bank live database service is currently unavailable. No dummy data was fabricated.');
       }
     } catch (e) {
-      triggerNotification('Network error updating economic database.');
+      triggerNotification('Sovereign pipeline offline. Network error updating economic database.');
     } finally {
       setIsUpdating(false);
     }
@@ -551,7 +578,7 @@ export default function App() {
               {/* AI Bulletins section (Fills when updated) */}
               {bulletins.length > 0 && (
                 <div className="mt-6 pt-6 border-t border-brand-border">
-                  <NewsBulletins bulletins={bulletins} />
+                  <NewsBulletins bulletins={bulletins} isLive={isLatestDataLive} />
                 </div>
               )}
             </div>
@@ -658,6 +685,7 @@ export default function App() {
                   activeTab={chartTab}
                   selectedRegion={selectedRegion}
                   onSelectRegion={setSelectedRegion}
+                  countries={countries}
                 />
 
                 {selectedRegion && (
@@ -694,8 +722,11 @@ export default function App() {
                 <div className="bg-slate-300/15 border border-brand-border hover:border-brand-dim/20 rounded-2xl p-5 space-y-4 transition duration-300 hover:bg-slate-300/30 shadow-2xs">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h4 className="text-sm font-bold text-brand-text font-display">Nigeria</h4>
-                      <span className="text-[10px] text-slate-600 font-mono uppercase tracking-wider block mt-0.5">West Africa</span>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-brand-text font-display">Nigeria</h4>
+                        <DataBadge source={isLatestDataLive ? 'live' : 'static'} year={countries.find(c => c.id === 'nigeria')?.year || 2024} />
+                      </div>
+                      <span className="text-[10px] text-slate-600 font-mono uppercase tracking-wider block mt-1">West Africa</span>
                     </div>
                     <ArrowUpRight className="w-4 h-4 text-emerald-600" />
                   </div>
@@ -722,8 +753,11 @@ export default function App() {
                 <div className="bg-slate-300/15 border border-brand-border hover:border-brand-dim/20 rounded-2xl p-5 space-y-4 transition duration-300 hover:bg-slate-300/30 shadow-2xs">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h4 className="text-sm font-bold text-brand-text font-display">Egypt</h4>
-                      <span className="text-[10px] text-slate-600 font-mono uppercase tracking-wider block mt-0.5">North Africa</span>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-brand-text font-display">Egypt</h4>
+                        <DataBadge source={isLatestDataLive ? 'live' : 'static'} year={countries.find(c => c.id === 'egypt')?.year || 2024} />
+                      </div>
+                      <span className="text-[10px] text-slate-600 font-mono uppercase tracking-wider block mt-1">North Africa</span>
                     </div>
                     <ArrowUpRight className="w-4 h-4 text-emerald-600" />
                   </div>
@@ -750,8 +784,11 @@ export default function App() {
                 <div className="bg-slate-300/15 border border-brand-border hover:border-brand-dim/20 rounded-2xl p-5 space-y-4 transition duration-300 hover:bg-slate-300/30 shadow-2xs">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h4 className="text-sm font-bold text-brand-text font-display">South Africa</h4>
-                      <span className="text-[10px] text-slate-600 font-mono uppercase tracking-wider block mt-0.5">Southern Africa</span>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-brand-text font-display">South Africa</h4>
+                        <DataBadge source={isLatestDataLive ? 'live' : 'static'} year={countries.find(c => c.id === 'south-africa')?.year || 2024} />
+                      </div>
+                      <span className="text-[10px] text-slate-600 font-mono uppercase tracking-wider block mt-1">Southern Africa</span>
                     </div>
                     <ArrowUpRight className="w-4 h-4 text-emerald-600" />
                   </div>
@@ -1250,6 +1287,7 @@ export default function App() {
                   activeTab={chartTab}
                   selectedRegion={selectedRegion}
                   onSelectRegion={setSelectedRegion}
+                  countries={countries}
                 />
               </div>
 
@@ -1275,23 +1313,23 @@ export default function App() {
                       <div className="space-y-3 font-mono text-xs bg-brand-input p-4 rounded-2xl border border-brand-border">
                         <div className="flex justify-between">
                           <span className="text-brand-dim">GDP Weight:</span>
-                          <span className="font-bold text-brand-text">{`$${REGIONAL_SCREENSHOT_VALUES[selectedRegion].gdp}B`}</span>
+                          <span className="font-bold text-brand-text">{`$${selectedRegionSummary?.gdp || 0}B`}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-brand-dim">Debt to GDP (avg):</span>
-                          <span className="font-bold text-[#ca8a04]">{REGIONAL_SCREENSHOT_VALUES[selectedRegion].debtToGdp}%</span>
+                          <span className="font-bold text-[#ca8a04]">{selectedRegionSummary?.debtToGdp || 0}%</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-brand-dim">Government Budget:</span>
-                          <span className="font-bold text-brand-text">{`$${REGIONAL_SCREENSHOT_VALUES[selectedRegion].budget}B`}</span>
+                          <span className="font-bold text-brand-text">{`$${selectedRegionSummary?.budget || 0}B`}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-brand-dim">Unemployment Rate:</span>
-                          <span className="font-bold text-rose-700">{REGIONAL_SCREENSHOT_VALUES[selectedRegion].unemployment}%</span>
+                          <span className="font-bold text-rose-700">{selectedRegionSummary?.unemployment || 0}%</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-brand-dim">Est Population:</span>
-                          <span className="font-bold text-brand-text">{REGIONAL_SCREENSHOT_VALUES[selectedRegion].population}M</span>
+                          <span className="font-bold text-brand-text">{selectedRegionSummary?.population || 0}M</span>
                         </div>
                       </div>
 

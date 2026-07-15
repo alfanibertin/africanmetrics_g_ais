@@ -7,7 +7,7 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
   /* Sophisticated Institutional Silver & Slate Glassmorphism Palette */
-  --color-brand-bg: #cbd5e1; /* Neutral, soothing, and high-end slate gray */
+  --color-brand-bg: #f8fafc; /* Bright, clean, and high-end slate gray */
   --color-brand-card: rgba(15, 23, 42, 0.05);
   --color-brand-card-hover: rgba(15, 23, 42, 0.1);
   --color-brand-border: rgba(15, 23, 42, 0.09);
@@ -70,7 +70,7 @@
 .database-scroll-container::-webkit-scrollbar-thumb {
   background: #0f172a; /* Nice dark black thumb */
   border-radius: 8px;
-  border: 2px solid #cbd5e1; /* Elegant border to separate from track */
+  border: 2px solid #f8fafc; /* Elegant border to separate from track */
 }
 
 .database-scroll-container::-webkit-scrollbar-thumb:hover {
@@ -78,31 +78,7 @@
 }
 
 /* --- Focus Mode CSS Selector Refinements --- */
-div#root:nth-of-type(1) > div#main-app-container:nth-of-type(1) {
-  background-color: #f2f2f2 !important;
-}
-
-div#root:nth-of-type(1) > div#main-app-container:nth-of-type(1) > div:nth-of-type(3) > div#country-spotlight-card:nth-of-type(6) {
-  background-color: #f4f2f2 !important;
-}
-
-div#root:nth-of-type(1) > div#main-app-container:nth-of-type(1) > div:nth-of-type(3) > div#regional-overview-card:nth-of-type(5) {
-  background-color: #f4f2f2 !important;
-}
-
-div#root:nth-of-type(1) > div#main-app-container:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(4) > div#economic-indicators-card:nth-of-type(1) {
-  background-color: #f4f2f2 !important;
-}
-
-div#root:nth-of-type(1) > div#main-app-container:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(4) > div:nth-of-type(2) > div#africa-map-card:nth-of-type(1) {
-  background-color: #f4f2f2 !important;
-}
-
-div#root:nth-of-type(1) > div#main-app-container:nth-of-type(1) > div:nth-of-type(3) > div#gemini-ai-analyzer-panel:nth-of-type(7) {
-  background-color: #f4f2f2 !important;
-}
-
-div#root:nth-of-type(1) > div#main-app-container:nth-of-type(1) > div:nth-of-type(3) > div#country-data-table-card:nth-of-type(8) {
-  background-color: #f4f2f2 !important;
+div#root > div#main-app-container {
+  outline: none;
 }
 

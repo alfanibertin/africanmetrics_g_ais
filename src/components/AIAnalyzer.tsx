@@ -21,6 +21,7 @@ export default function AIAnalyzer({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [response, setResponse] = useState<string>('');
   const [warning, setWarning] = useState<string | null>(null);
+  const [isLive, setIsLive] = useState<boolean>(false);
 
   const selectedCountry = countries.find(c => c.id === selectedCountryId) || countries[0];
 
@@ -28,6 +29,7 @@ export default function AIAnalyzer({
     setIsLoading(true);
     setResponse('');
     setWarning(null);
+    setIsLive(false);
 
     try {
       const res = await fetch('/api/analyze-country', {
@@ -36,13 +38,7 @@ export default function AIAnalyzer({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          countryName: selectedCountry.name,
-          region: selectedCountry.region,
-          gdp: selectedCountry.gdp,
-          population: selectedCountry.population,
-          unemployment: selectedCountry.unemployment,
-          highlight: selectedCountry.highlight,
-          growthRate: selectedCountry.growthRate,
+          countryId: selectedCountry.id,
           customQuestion: questionToAsk || null,
         }),
       });
@@ -50,6 +46,7 @@ export default function AIAnalyzer({
       const data = await res.json();
       if (data.success) {
         setResponse(data.analysis);
+        setIsLive(!!data.isLive);
         if (data.warning) {
           setWarning(data.warning);
         }
@@ -259,6 +256,24 @@ export default function AIAnalyzer({
               <Loader2 className="w-8 h-8 text-[#c2410c] animate-spin" />
               <p className="text-xs font-mono text-brand-muted">Simulating general equilibrium matrices & AI commentary...</p>
             </div>
+          )}
+
+          {/* Prominent Colored Banner above the output */}
+          {response && (
+            isLive ? (
+              <div className="mb-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 text-xs rounded-xl p-3 flex items-center gap-2.5 shadow-2xs font-semibold">
+                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse shrink-0" />
+                <span>LIVE REPORT MODE — Powered by active Gemini 2.5 API.</span>
+              </div>
+            ) : (
+              <div className="mb-4 bg-amber-500/10 border border-amber-500/30 text-amber-800 text-xs rounded-xl p-3 flex items-start gap-2.5 shadow-2xs font-semibold">
+                <span className="w-2 h-2 rounded-full bg-amber-600 animate-pulse shrink-0 mt-1" />
+                <div>
+                  <span className="block">SIMULATED BRIEF MODE</span>
+                  <span className="text-[10px] text-brand-dim font-normal block mt-0.5">Illustrative analysis only. Set a GEMINI_API_KEY in secrets to enable live real-time analysis.</span>
+                </div>
+              </div>
+            )
           )}
 
           {warning && (

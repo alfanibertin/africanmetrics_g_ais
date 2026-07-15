@@ -3,6 +3,9 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
+import rateLimit from 'express-rate-limit';
+import { z } from 'zod';
+import { COUNTRIES } from './src/shared/countries.js';
 
 dotenv.config();
 
@@ -10,6 +13,21 @@ const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+
+// Trust proxy for accurate rate limiting behind Nginx / Cloud Run
+app.set('trust proxy', 1);
+
+// Standard rate limiter for all /api/* routes: 10 requests per minute per IP
+const apiRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+  statusCode: 429,
+});
+
+app.use('/api/*', apiRateLimiter);
 
 // Lazy-initialization helper for GoogleGenAI
 let aiClient: GoogleGenAI | null = null;
@@ -24,14 +42,38 @@ function getAiClient(): GoogleGenAI {
   return aiClient;
 }
 
+// Zod validation schemas
+const analyzeCountrySchema = z.object({
+  countryId: z.string().min(1),
+  customQuestion: z.string().max(500).optional().nullable(),
+}).strict();
+
+const sahelInsightsSchema = z.object({
+  corridor: z.enum(['togo', 'benin', 'trans-sahara']),
+  securityRatio: z.number().min(0).max(100),
+  focus: z.enum(['financial', 'tripartite', 'logistics', 'budgetary', 'debt']),
+}).strict();
+
+const updateDataSchema = z.object({}).strict().optional();
+
 // API endpoint to analyze a country's economy using Gemini API
 app.post('/api/analyze-country', async (req, res) => {
   try {
-    const { countryName, region, gdp, population, unemployment, highlight, growthRate, customQuestion } = req.body;
-
-    if (!countryName) {
-      return res.status(400).json({ error: 'Country name is required' });
+    // 1. Zod request validation
+    const validationResult = analyzeCountrySchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({ error: 'Invalid request body fields.', details: validationResult.error.format() });
     }
+
+    const { countryId, customQuestion } = validationResult.data;
+
+    // 2. Server-side trust boundary: Look up country from COUNTRIES module
+    const country = COUNTRIES.find(c => c.id === countryId);
+    if (!country) {
+      return res.status(404).json({ error: 'Country not found' });
+    }
+
+    const { name: countryName, region, gdp, population, unemployment, highlight, growthRate } = country;
 
     let prompt = '';
     if (customQuestion) {
@@ -48,7 +90,7 @@ app.post('/api/analyze-country', async (req, res) => {
       The user has asked the following specific question about this country:
       "${customQuestion}"
 
-      Provide a detailed, professional, and structured answer. Keep the tone insightful, objective, and analytical. Use clear markdown formatting. Avoid general jargon; be specific to ${countryName}'s regional and global context.`;
+      Provide a detailed, professional, and structured answer. Keep the tone insightful, objective, and analytical. Use clear markdown formatting. Clearly state when a figure is an estimate. Do not invent citations; only reference a source if it is provided in this prompt. Avoid general jargon; be specific to ${countryName}'s regional and global context.`;
     } else {
       prompt = `You are a world-class economist specializing in African economies.
       Perform a comprehensive economic analysis of the following African country:
@@ -67,7 +109,7 @@ app.post('/api/analyze-country', async (req, res) => {
       4. **Strategic Growth Opportunities & Policy Recommendations**: 2-3 specific actions the government could take.
       5. **Medium-Term Outlook (2026-2030)**: Give a concise forecast (Positive, Stable, or Caution) with brief reasoning.
 
-      Keep the report highly analytical, professional, and beautifully organized with bullet points. Let your answers be deep and informative, fitting for policy advisors or global investors.`;
+      Keep the report highly analytical, professional, and beautifully organized with bullet points. Clearly state when a figure is an estimate. Do not invent citations; only reference a source if it is provided in this prompt. Let your answers be deep and informative, fitting for policy advisors or global investors.`;
     }
 
     try {
@@ -78,16 +120,17 @@ app.post('/api/analyze-country', async (req, res) => {
       });
 
       const analysisText = response.text || 'Could not generate report from Gemini API.';
-      return res.json({ success: true, analysis: analysisText });
+      return res.json({ success: true, isLive: true, analysis: analysisText });
     } catch (apiKeyError: any) {
       console.warn('Gemini API call failed, falling back to simulated analysis:', apiKeyError.message);
       
-      // Fallback content in case GEMINI_API_KEY is not set or invalid
-      const fallbackAnalysis = `### **AI Economic Analysis: ${countryName} (Simulated)**
-*Note: This is a simulated analysis because a valid Gemini API key is not currently configured.*
+      // Fallback content with a prominent warning
+      const fallbackAnalysis = `> ⚠️ SIMULATED SCENARIO — illustrative analysis only. No figures below are sourced. Configure a Gemini API key for live AI analysis.
+
+### **AI Economic Analysis: ${countryName} (Simulated)**
 
 #### **1. Macroeconomic Outlook**
-${countryName} shows an annual growth rate of **${growthRate}%**, displaying a steady baseline. With a GDP of **$${gdp}B** and a population of **${population}M**, the nation is navigating typical emerging-market adjustments.
+${countryName} shows an annual growth rate of **${growthRate}%**, displaying a steady baseline. With an estimated GDP of **$${gdp}B** and a population of **${population}M**, the nation is navigating typical emerging-market adjustments.
 
 #### **2. Strengths & Core Drivers**
 * **Primary Activities**: Driven heavily by ${highlight.toLowerCase()}.
@@ -107,6 +150,7 @@ ${countryName} shows an annual growth rate of **${growthRate}%**, displaying a s
 
       return res.json({
         success: true,
+        isLive: false,
         analysis: fallbackAnalysis,
         warning: 'Using simulated fallback. Please set a valid GEMINI_API_KEY in secrets to enable live Gemini AI models.',
       });
@@ -117,10 +161,16 @@ ${countryName} shows an annual growth rate of **${growthRate}%**, displaying a s
   }
 });
 
-// NEW: API endpoint to generate Sahel Alliance policy insights using DeepSeek with Gemini fallback
+// API endpoint to generate Sahel Alliance policy insights
 app.post('/api/sahel-deepseek-insights', async (req, res) => {
   try {
-    const { corridor, securityRatio, focus, countries } = req.body;
+    // 1. Zod request validation
+    const validationResult = sahelInsightsSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({ error: 'Invalid request body fields.', details: validationResult.error.format() });
+    }
+
+    const { corridor, securityRatio, focus } = validationResult.data;
 
     const corridorNames: Record<string, string> = {
       togo: 'Lomé Corridor (Togo) - Moderate transit fees, stable political ties',
@@ -138,7 +188,7 @@ app.post('/api/sahel-deepseek-insights', async (req, res) => {
     const corridorLabel = corridorNames[corridor] || corridor;
     const focusLabel = focusTopics[focus] || focus;
 
-    const systemPrompt = `You are an Open Source AI Driven Research assistant, a world-class macroeconomic policy analyst and geopolitical strategist specializing in the Sahel region, landlocked developing countries (LLDCs), and the Alliance of Sahel States (Burkina Faso, Mali, Niger). Your task is to provide expert analytical commentary and structural advice based on custom simulation variables.`;
+    const systemPrompt = `You are a world-class macroeconomic policy analyst and geopolitical strategist specializing in the Sahel region, landlocked developing countries (LLDCs), and the Alliance of Sahel States (Burkina Faso, Mali, Niger). Your task is to provide expert analytical commentary and structural advice based on custom simulation variables.`;
 
     const userPrompt = `Perform a rigorous, forward-looking economic analysis for the Alliance of Sahel States (Burkina Faso, Mali, and Niger) based on these custom simulation inputs:
     
@@ -147,9 +197,9 @@ app.post('/api/sahel-deepseek-insights', async (req, res) => {
     - **Surveillance Focus Area**: ${focusLabel}
     
     Core country stats context:
-    - Burkina Faso: GDP $24.2B, Pop 23.5M, Growth +5.8%, Unemployment 6.4%, Debt 58%
-    - Mali: GDP $21.8B, Pop 24.1M, Growth +5.1%, Unemployment 7.1%, Debt 54%
-    - Niger: GDP $18.5B, Pop 27.2M, Growth +6.5%, Unemployment 5.8%, Debt 52%
+    - Burkina Faso: GDP $18.3B, Pop 22.6M, Growth +3.2%, Unemployment 6.4%, Debt 55%
+    - Mali: GDP $20.1B, Pop 22.5M, Growth +3.5%, Unemployment 7.9%, Debt 53.2%
+    - Niger: GDP $12.4B, Pop 26.2M, Growth +4.1%, Unemployment 14.8%, Debt 51.2%
 
     Please deliver a highly detailed economic dossier with the following layout:
     
@@ -167,10 +217,8 @@ app.post('/api/sahel-deepseek-insights', async (req, res) => {
     ### **IV. Medium-Term Risk Rating & Projections (2026-2030)**
     Provide a final expert evaluation. Highlight the **Recommended Policy Pivot** to optimize growth while protecting territorial borders.
     
-    ### **V. Data Sources & Reference Dates**
-    Explicitly list the dates (e.g. FY 2024/2025) and authoritative sources (such as IMF Article IV Consultations, World Bank Economic Updates, and respective national Ministries of Finance for Mali, Niger, and Burkina Faso) supporting all statistics and financial figures presented in this economic dossier.
-    
-    Format the response as raw markdown, with elegant, high-impact formatting suitable for presidential policy advisors. Keep the tone completely objective, deep, and expert. Do not mention that you are a simulator or a test app.`;
+    Clearly state when a figure is an estimate. Do not invent citations; only reference a source if it is provided in this prompt.
+    Format the response as raw markdown, with elegant, high-impact formatting suitable for presidential policy advisors. Keep the tone completely objective, deep, and expert.`;
 
     const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
 
@@ -200,7 +248,8 @@ app.post('/api/sahel-deepseek-insights', async (req, res) => {
           if (analysisText) {
             return res.json({
               success: true,
-              engine: 'Open Source AI Driven Research (Live)',
+              isLive: true,
+              engine: 'DeepSeek V3 (Live)',
               analysis: analysisText
             });
           }
@@ -226,6 +275,7 @@ app.post('/api/sahel-deepseek-insights', async (req, res) => {
       if (analysisText) {
         return res.json({
           success: true,
+          isLive: false,
           engine: 'Gemini 2.5 (AI Driven Research Simulation)',
           analysis: analysisText,
           notice: !deepseekApiKey ? 'Live DeepSeek key not found in env. Falling back to Gemini 2.5 to simulate AI policy outputs.' : undefined
@@ -236,118 +286,109 @@ app.post('/api/sahel-deepseek-insights', async (req, res) => {
     }
 
     // High fidelity offline-simulation fallback if both are offline or unconfigured
+    // Rewritten to be purely qualitative commentary with zero fabricated citations or statistics.
     let simulatedInsight = '';
     if (focus === 'financial') {
-      simulatedInsight = `### **I. AI Executive Directive: Geopolitical Alignment**
-Analyzing the macro-fiscal equilibrium of the Alliance of Sahel States (AES) under the **${corridorLabel}** at a **${securityRatio}%** defense budget ratio shows high pressure on national balance sheets. With total annual revenue at **$12.01 Billion** against expenditure of **$15.15 Billion**, the cumulative regional deficit sits at **-$3.13 Billion** (averaging **-5.2% of GDP**). A high defense allocation provides essential territorial stabilization but deepens the sovereign reliance on domestic treasury bills, taxing private credit markets.
+      simulatedInsight = `> ⚠️ SIMULATED SCENARIO — illustrative analysis only. No figures below are sourced. Configure an API key for live AI analysis.
+
+### **I. AI Executive Directive: Geopolitical Alignment**
+Analyzing the macro-fiscal equilibrium of the Alliance of Sahel States (AES) under the chosen transit corridor at the designated defense budget ratio shows considerable pressure on national balance sheets. Allocating a significant portion of state budgets to security provides essential territorial stabilization but narrows the fiscal space for social investments and capital development.
 
 ### **II. Strategic Policy Impacts on: Macro-Fiscal Balance & Economic Analysis**
-* **Direct Fiscal Deficits**: Burkina Faso, Mali, and Niger are operating with wide fiscal gaps. Spending ${securityRatio}% on security leaves inadequate capital to cover primary educational budgets, infrastructure investments, and agricultural subsidies without foreign aid.
-* **Debt Sustainability Thresholds**: Combined regional external debt has reached **$18.90 Billion** (nearly 32% of regional GDP), with internal domestic debt rising to **$10.40 Billion** to bridge the budget gap.
-* **Corridor Freight Efficiencies**: Securing trade routes via Togo lowers freight insurance fees, reducing the hidden tax on imported machinery and helping control domestic inflation.
+* **Fiscal Trade-offs**: Operating under restricted fiscal space, Burkina Faso, Mali, and Niger face structural challenges in balancing immediate security expenditures with developmental priorities. High security overheads risk delaying critical transport link investments and agricultural modernization projects.
+* **Debt Outlook**: Increased reliance on domestic treasury markets to bridge budget gaps presents challenges for debt sustainability and risks crowding out credit to the private sector.
+* **Corridor Synergies**: Choosing a secure and efficient transit route reduces freight insurance premiums and logistics costs, which helps mitigate domestic inflationary pressures on imported goods.
 
 ### **III. Member-State Granular Breakdown**
-* **Burkina Faso**: Ministry of Finance data reports a **-$1.21 Billion (-5.1% of GDP)** deficit, offset by gold mining royalties which must remain stable to support high military logistics.
-* **Mali**: Operating under a **-$0.97 Billion (-4.7% of GDP)** budget gap; COTONOU route volatility increases supply costs, directly expanding consumer price indices.
-* **Niger**: Facing a sharp **-$0.95 Billion (-5.8% of GDP)** deficit, representing high strain on uranium tax revenues. Domestic debt of **$2.70 Billion** requires urgent sovereign debt management reforms.
+* **Burkina Faso**: Elevated security spending protects gold-producing areas but limits capital allocations for regional infrastructure.
+* **Mali**: Logistical transit route vulnerabilities affect trade flow consistency, causing supply chain bottlenecks and consumer price fluctuations.
+* **Niger**: Macroeconomic stability remains highly sensitive to uranium exports and agricultural trade, which require secure transport corridors.
 
 ### **IV. Medium-Term Risk Rating & Projections (2026-2030)**
-* **Risk Rating**: **High Sovereign Stress (Fiscal Balance Deficit)**
-* **Recommended Policy Pivot**: Implement the **Joint AES Customs Revenue Pool** with a unified transit-tariff treasury to co-finance security corridors directly from regional trade receipts, safeguarding social spending.
-
-### **V. Data Sources & Reference Dates**
-* **Mali Fiscal Balance**: Mali Ministry of Economy & Finance (Quarterly Bulletin Q1-2025) / IMF Article IV Consultation (FY 2024/2025).
-* **Burkina Faso Budget & Debt**: Burkina Faso Ministry of Economy, Finance & Development (Budget Directorate FY 2024/2025 Act) / IMF Extended Credit Facility (ECF) Review (January 2025).
-* **Niger Economy & Deficit**: Niger Ministry of Economy and Finance (Annual Economic Review 2024) / World Bank Economic Update (Fall 2024 Profile).`;
+* **Risk Rating**: **Elevated Geopolitical & Fiscal Stress**
+* **Recommended Policy Pivot**: Establish a joint customs revenue coordination mechanism and a unified transit-tariff management framework to optimize revenue collection while safeguarding social development budgets.`;
     } else if (focus === 'tripartite') {
-      simulatedInsight = `### **I. AI Executive Directive: Geopolitical Alignment**
-Integrating the **${corridorLabel}** while dedicating **${securityRatio}%** of the sovereign budget to security forces creates a complex fiscal posture. The Alliance of Sahel States (Burkina Faso, Mali, Niger) is forced to navigate a "security first" monetary cycle. Higher defense allocations provide critical security cover for high-value gold mines and transit routes, but limit the initial capitalization reserves required for a tripartite Central Bank and independent currency launcher.
+      simulatedInsight = `> ⚠️ SIMULATED SCENARIO — illustrative analysis only. No figures below are sourced. Configure an API key for live AI analysis.
+
+### **I. AI Executive Directive: Geopolitical Alignment**
+Integrating trade routes with the designated maritime corridor while dedicating a major portion of state budgets to security creates a complex fiscal posture. The Alliance of Sahel States (Burkina Faso, Mali, Niger) is forced to navigate security-sensitive monetary adjustments. While high defense spending secures critical infrastructure, it restricts the capital reserves necessary for tripartite financial institutions.
 
 ### **II. Strategic Policy Impacts on: Tripartite Integration & Monetary Feasibility**
-* **Reserve Capital Scarcity**: A ${securityRatio}% defense burden reduces the capacity of member nations to deposit liquid gold and foreign currency reserves into a joint currency vault, slowing the transition away from the CFA Franc.
-* **Inflationary Pressures**: Without a stable, unified central reserve, independent currency issuance risk severe speculative pressure, particularly if overland corridors to Togo or Algeria face administrative bottleneck tariffs.
-* **Exchange-Rate Stability**: Utilizing the Lomé corridor provides a stable link to international maritime commerce, which acts as a confidence hedge for secondary sovereign debt notes.
+* **Reserve Accumulation Hurdles**: A high security burden reduces the capacity of member nations to deposit liquid assets into a joint central pool, slowing the structural transition to full monetary autonomy.
+* **Inflationary Risks**: Moving toward an independent currency without a fully capitalized regional reserve system increases exposure to speculative pressures, particularly if trade corridors face administrative or border bottlenecks.
+* **Exchange-Rate Stability**: Access to diversified transport corridors provides a confidence hedge for trade-related foreign exchange flows, stabilizing regional payment balances.
 
 ### **III. Member-State Granular Breakdown**
-* **Burkina Faso**: Gold extraction sites are protected by defense allocations, sustaining a critical export asset to back any future Sahel currency.
-* **Mali**: Capitalized trade routes via Togo bolster cotton revenues, providing a stable stream of export dollars to back central reserves.
-* **Niger**: Uranium export corridors remain key, but high transport surcharges reduce net foreign reserves needed for banking capitalization.
+* **Burkina Faso**: Sustaining secure gold production is essential to back any joint monetary reserves, but demands persistent domestic security funding.
+* **Mali**: Securing regional cotton trade corridors supports foreign exchange inflows, acting as a monetary stabilizer for the bloc.
+* **Niger**: Transit cost fluctuations on uranium and agricultural exports directly affect net foreign exchange reserves.
 
 ### **IV. Medium-Term Risk Rating & Projections (2026-2030)**
-* **Risk Rating**: **Medium-High (Fiscal Constraint)**
-* **Recommended Policy Pivot**: Establish an **AES Gold Pool** where 5% of mineral output is directly held in a joint sovereign vault as non-inflationary backing before launching active currency circulation.
-
-### **V. Data Sources & Reference Dates**
-* **Reserve Reserves & Gold Reserves**: Banque Centrale des États de l'Afrique de l'Ouest (BCEAO) Gold Vault Reports (Q4-2024) / IMF Regional Economic Outlook: Sub-Saharan Africa (October 2024).
-* **Lomé Trade Linkages**: Port Autonome de Lomé Corridor Annual Progress Report (FY 2024/2025).`;
+* **Risk Rating**: **Moderate-High (Fiscal & Reserves Constraint)**
+* **Recommended Policy Pivot**: Establish a joint physical gold reserve pool using a small percentage of mining outputs, bypassing cash constraints to back sovereign monetary instruments.`;
     } else if (focus === 'logistics') {
-      simulatedInsight = `### **I. AI Executive Directive: Geopolitical Alignment**
-Directing cargo through the **${corridorLabel}** combined with a **${securityRatio}%** defense allocation optimizes trade corridor resilience. Landlocked economies require secured, frictionless transit. High military expenditures secure trade corridors against asymmetric threats, though transport surcharges over longer distances (like the Trans-Saharan gateway) impose a structural tax on national imports.
+      simulatedInsight = `> ⚠️ SIMULATED SCENARIO — illustrative analysis only. No figures below are sourced. Configure an API key for live AI analysis.
+
+### **I. AI Executive Directive: Geopolitical Alignment**
+Directing trade flows through the chosen transit corridor combined with the specified defense budget ratio optimizes trade corridor resilience. Landlocked economies require secure, friction-free transport links. High security expenditures safeguard national arterial routes but transport surcharges over extended corridors impose a structural transit tax.
 
 ### **II. Strategic Policy Impacts on: Logistical Transit & Customs Convergence**
-* **Frictionless Corridors**: High military security minimizes highway extortion, reducing average transit duration down to manageable levels along secured routes.
-* **Surcharge Equilibrium**: If using Lomé, transit fees are low, but landlocked states remain exposed to regional tariffs. The Trans-Saharan gateway bypasses traditional risks but increases logistical fuel costs.
-* **Customs Harmonization**: A high security posture requires digitized, automated checkpoints to prevent customs bottlenecking under heavy military presence.
+* **Corridor Security**: Elevated defense funding reduces security incidents along arterial transit routes, lowering insurance premiums and freight delay risks.
+* **Administrative Bottlenecks**: Higher military checkpoint density along trade corridors can lead to transit delays unless combined with streamlined digital customs clearance.
+* **Regional Customs Convergence**: Reconciling customs frameworks across multiple borders remains a key priority to reduce administrative friction and simplify transit tariffs.
 
 ### **III. Member-State Granular Breakdown**
-* **Burkina Faso**: Serves as the central transit junction for the alliance; a high security posture directly reduces transit sabotage.
-* **Mali**: Heavy reliance on Lomé provides a critical outlet, though fuel price fluctuations represent an ongoing vulnerability.
-* **Niger**: Bypassing traditional southern routes for northern corridors reduces political friction but raises structural freight rates.
+* **Burkina Faso**: Serves as the central geographic node of the alliance; security conditions on its highways dictate trade velocity.
+* **Mali**: Access to deepwater ports requires stable corridors, making secure transport infrastructure vital to export competitiveness.
+* **Niger**: Bypassing traditional routes for alternative transit corridors secures trade routes but increases operational freight overheads.
 
 ### **IV. Medium-Term Risk Rating & Projections (2026-2030)**
-* **Risk Rating**: **Moderate (High Operational Cost)**
-* **Recommended Policy Pivot**: Implement **Sovereign Escrow Customs Clearence** where freight trucks are sealed electronically, removing manual military inspections and speeding up border crossing by 70%.
-
-### **V. Data Sources & Reference Dates**
-* **Logistics Performance Indicators**: World Bank Logistics Performance Index (LPI 2024/2025) / Port Autonome de Lomé Trade & Corridor Analytics (Q1-2025).
-* **AES Checkpoint Operations**: Joint Sahel States Border Customs Directorate (Operations Audit Report, December 2024).`;
+* **Risk Rating**: **Moderate (Operational Logistics Costs)**
+* **Recommended Policy Pivot**: Implement pre-cleared, electronically sealed cargo convoys across the AES corridors to remove repetitive physical military inspections and boost transport speed.`;
     } else if (focus === 'budgetary') {
-      simulatedInsight = `### **I. AI Executive Directive: Geopolitical Alignment**
-A **${securityRatio}%** defense spending ratio represents a classic **Strategic Spending Balance (Security vs. Development) trade-off**. While securing the **${corridorLabel}** requires robust defense budgets, a high allocation crowds out development capital in education, energy, and public infrastructure. This trade-off threatens long-term GDP growth, even as it stabilizes immediate geopolitical security.
+      simulatedInsight = `> ⚠️ SIMULATED SCENARIO — illustrative analysis only. No figures below are sourced. Configure an API key for live AI analysis.
+
+### **I. AI Executive Directive: Geopolitical Alignment**
+The designated defense spending ratio represents a classic strategic trade-off. While securing transit routes requires robust defense funding, high security spending crowds out development capital in education, energy, and healthcare. This trade-off impacts long-term economic diversification even as it stabilizes immediate sovereign security.
 
 ### **II. Strategic Policy Impacts on: Fiscal Trade-offs**
-* **Capital Crowding Out**: Directing ${securityRatio}% of state budgets to security starves high-yield agricultural irrigation projects and rural electricity expansion.
-* **Security Premiums**: Lower defense spending (e.g., 20%) triggers high insurance premiums on mineral exports and trade freight, negating infrastructure savings.
-* **Sovereign Growth Ceiling**: Development budgets below 60% lead to long-term labor skill shortages and structural bottlenecks in uranium and gold processing.
+* **Development Crowding Out**: Directing a major share of state budgets to security curtails capital investments in rural electrification, irrigation, and transport infrastructure.
+* **Security Premiums**: Lowering defense spending below a critical threshold can elevate route security risks, raising insurance premiums on mineral exports and negating public savings.
+* **Human Capital Strains**: Sustained high security overheads limit funding for education and health services, impacting workforce productivity and industrial diversification.
 
 ### **III. Member-State Granular Breakdown**
-* **Burkina Faso**: Gold fields require continuous military patrols, making high security budgets a structural necessity for export earnings.
-* **Mali**: Cotton farming belts require rural transport stability, which is highly dependent on securing regional roads.
-* **Niger**: Securing uranium mines near Agadez is highly expensive, but vital to prevent severe sovereign revenue deficits.
+* **Burkina Faso**: Gold production zones require active protection, making security budgets critical to maintaining national export revenues.
+* **Mali**: Securing agricultural regions is vital for domestic food security and agricultural export revenues.
+* **Niger**: High security costs are required to protect critical mining zones, compounding challenges in social sector financing.
 
 ### **IV. Medium-Term Risk Rating & Projections (2026-2030)**
-* **Risk Rating**: **High (Structural Deficit Risk)**
-* **Recommended Policy Pivot**: Establish a **Joint AES Security Fund** co-financed by mining royalties to offload military expenses from the primary sovereign developmental budget.
-
-### **V. Data Sources & Reference Dates**
-* **National Defense Budgets**: Official Budget Gazettes of Burkina Faso, Mali, and Niger (FY 2024/2025 Enacted Budgets) / Stockholm International Peace Research Institute (SIPRI) Military Expenditure Database (April 2025).
-* **Sahel Socioeconomic Indicators**: World Bank Human Capital Index (HCI 2024 Update) / UNDP Sahel Development Indicators (December 2024 Report).`;
+* **Risk Rating**: **High (Structural Reallocation Strains)**
+* **Recommended Policy Pivot**: Create a dedicated regional infrastructure and development fund separate from primary security budgets, financed directly by specific resource royalty allocations.`;
     } else {
-      simulatedInsight = `### **I. AI Executive Directive: Geopolitical Alignment**
-Establishing sovereign debt coordination while allocating **${securityRatio}%** of national budgets to defense demands deep regional capital markets. Under the **${corridorLabel}**, securing trade routes maintains the core credit profile of the alliance. Joint financing through a central Sahel Investment Bank can help bypass global sanctions, but requires disciplined coordination of mining royalty collateral.
+      simulatedInsight = `> ⚠️ SIMULATED SCENARIO — illustrative analysis only. No figures below are sourced. Configure an API key for live AI analysis.
+
+### **I. AI Executive Directive: Geopolitical Alignment**
+Establishing sovereign debt coordination while managing high defense obligations demands innovative regional financing structures. Under the chosen transit corridor, securing commodity export channels maintains the underlying credit profile of the alliance, but joint borrowing requires rigorous alignment of national resource collateral.
 
 ### **II. Strategic Policy Impacts on: Sovereign Debt & Joint Investment Banking**
-* **Credit Enhancements**: Securing transit pathways guarantees that export commodities reach world markets, reducing default premiums on sovereign debt.
-* **Joint Capitalization**: A unified investment bank would allow the states to pool gold assets as collateral, raising credit ratings from CCC to B-equivalent.
-* **Sanction Resilience**: By bypassing legacy global clearing hubs, joint investment vehicles secure development project financing against external liquid asset freezes.
+* **Sovereign Risk Premiums**: Safeguarding export corridors ensures resource revenues reach global markets, which lowers borrowing costs and enhances sovereign creditworthiness.
+* **Coordinated Capitalization**: Establishing a unified regional investment bank allows member states to pool resources and gold reserves, elevating their collective borrowing power.
+* **Debt Sustainability**: Managing joint debt issuances under high security overheads requires unified fiscal discipline to prevent debt-to-GDP ratios from exceeding sustainable levels.
 
 ### **III. Member-State Granular Breakdown**
-* **Burkina Faso**: Can pool its substantial gold mining tax revenues to underwrite joint development bonds for regional railway projects.
-* **Mali**: Can issue unified debt notes backed by agricultural commodity yields, reducing standalone financing costs by 2.5%.
-* **Niger**: Uranium export receipts can be channeled through the AES Investment Bank, creating a sovereign credit buffer.
+* **Burkina Faso**: Integrating gold revenues into regional financing structures can strengthen joint credit instruments.
+* **Mali**: Agricultural surpluses can be leveraged as backing for regional food security development bonds.
+* **Niger**: Long-term uranium contracts offer stable cash-flow templates for structured joint project financing.
 
 ### **IV. Medium-Term Risk Rating & Projections (2026-2030)**
-* **Risk Rating**: **Stable-Moderate (Emerging Capacity)**
-* **Recommended Policy Pivot**: Launch **Gold-Backed Sovereign Development Bonds** cleared directly through a tripartite capital agency to attract alternative international capital.
-
-### **V. Data Sources & Reference Dates**
-* **Sovereign Debt Portfolios**: Joint IMF/World Bank Debt Sustainability Framework (DSF) for Low-Income Countries (FY 2024/2025 Evaluations) / National Public Debt Directorates of Burkina Faso, Mali, and Niger (Debt Ledger Statement, Q1-2025).
-* **AfDB Regional Financing**: African Development Bank (AfDB) Sahel Regional Strategy Paper (2024-2026 Strategy Paper).`;
+* **Risk Rating**: **Stable-Moderate (Emerging Financing Capacity)**
+* **Recommended Policy Pivot**: Launch joint, resource-backed developmental bonds to fund regional rail and power networks, attracting alternative international investment.`;
     }
 
     return res.json({
       success: true,
-      engine: 'Open Source AI Driven Research (Offline Simulation)',
+      isLive: false,
+      engine: 'DeepSeek V3 (Simulated)',
       analysis: simulatedInsight,
       notice: 'Using highly realistic offline policy simulations. Configure DEEPSEEK_API_KEY or GEMINI_API_KEY to activate live AI generation.'
     });
@@ -361,6 +402,12 @@ Establishing sovereign debt coordination while allocating **${securityRatio}%** 
 // API endpoint to fetch simulated live World Bank updates and generate AI economic bulletins
 app.post('/api/update-data', async (req, res) => {
   try {
+    const validationResult = updateDataSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({ error: 'Invalid body fields.', details: validationResult.error.format() });
+    }
+
+    // Default static bulletins in case Gemini API is offline or unconfigured
     let bulletins = [
       {
         id: '1',
@@ -372,19 +419,66 @@ app.post('/api/update-data', async (req, res) => {
       {
         id: '2',
         title: 'Central Africa Agri-Tech Initiative Launched',
-        summary: 'A consortium of development banks pledges $4.2B to digitize agricultural supply chains in Cameroon, Gabon, and DR Congo.',
-        impact: 'Expected to reduce post-harvest losses by 22% over three years.',
+        summary: 'A consortium of development banks pledges to digitize agricultural supply chains in Cameroon, Gabon, and DR Congo.',
+        impact: 'Expected to reduce post-harvest losses over three years.',
         category: 'Agriculture'
       },
       {
         id: '3',
         title: 'Southern Africa Grid Interconnection Accelerates',
         summary: 'Zambia, Zimbabwe, and South Africa align on utility-scale solar grid transfers to mitigate power deficits and stabilize regional manufacturing.',
-        impact: 'Improves South Africa’s energy resilience, mitigating supply chain drags.',
+        impact: 'Improves regional energy resilience, mitigating supply chain drags.',
         category: 'Infrastructure'
       }
     ];
 
+    // Fetch real GDP data from public World Bank API
+    let updatedCountries: Record<string, { gdp: number; year: number }> = {};
+    let isLiveFetch = false;
+
+    try {
+      console.log('Fetching live GDP data from World Bank API...');
+      const wbRes = await fetch('https://api.worldbank.org/v2/country/NGA;EGY;ZAF/indicator/NY.GDP.MKTP.CD?format=json&mrnev=1&per_page=10');
+      
+      if (!wbRes.ok) {
+        throw new Error('World Bank API responded with error status: ' + wbRes.status);
+      }
+
+      const wbData = await wbRes.json();
+      
+      if (Array.isArray(wbData) && wbData.length > 1 && Array.isArray(wbData[1])) {
+        const records = wbData[1];
+        
+        records.forEach((rec: any) => {
+          const code = rec.countryiso3code;
+          const val = rec.value;
+          const yearStr = rec.date;
+          
+          if (val && code) {
+            const gdpBillion = Number((val / 1e9).toFixed(1));
+            const yearNum = yearStr ? parseInt(yearStr, 10) : 2024;
+            
+            if (code === 'NGA') {
+              updatedCountries['nigeria'] = { gdp: gdpBillion, year: yearNum };
+            } else if (code === 'EGY') {
+              updatedCountries['egypt'] = { gdp: gdpBillion, year: yearNum };
+            } else if (code === 'ZAF') {
+              updatedCountries['south-africa'] = { gdp: gdpBillion, year: yearNum };
+            }
+          }
+        });
+        
+        isLiveFetch = true;
+      } else {
+        throw new Error('Invalid JSON structure returned by World Bank API');
+      }
+    } catch (wbError: any) {
+      console.warn('World Bank API fetch failed:', wbError.message);
+      // Fail explicitly and honestly instead of fabricating numbers
+      return res.status(503).json({ success: false, reason: 'world-bank-unavailable' });
+    }
+
+    // Now try to generate AI bulletins with Gemini if available
     try {
       const ai = getAiClient();
       const prompt = `You are an AI financial journalist writing brief bulletins on African economics. 
@@ -405,9 +499,9 @@ app.post('/api/update-data', async (req, res) => {
       });
 
       const responseText = response.text?.trim() || '';
-      // Clean up markdown wrapper if model included it despite instructions
       const cleanedJson = responseText.replace(/^```json/i, '').replace(/```$/, '').trim();
       const parsedBulletins = JSON.parse(cleanedJson);
+      
       if (Array.isArray(parsedBulletins) && parsedBulletins.length > 0) {
         bulletins = parsedBulletins.map((b, idx) => ({
           id: String(idx + 1),
@@ -418,10 +512,9 @@ app.post('/api/update-data', async (req, res) => {
         }));
       }
     } catch (e) {
-      console.warn('Could not generate bulletins with Gemini API, using simulated updates instead.');
+      console.warn('Could not generate bulletins with Gemini API, using static updates.');
     }
 
-    // Return the bulletins and randomized growth fluctuations
     return res.json({
       success: true,
       lastUpdated: new Date().toLocaleString('en-US', {
@@ -434,12 +527,8 @@ app.post('/api/update-data', async (req, res) => {
         hour12: true,
       }),
       bulletins,
-      // Slight changes in growth rates of spotlight countries to simulate live data
-      spotlightChanges: {
-        nigeria: { growthRate: 3.4, gdp: 442.1 },
-        egypt: { growthRate: 4.5, gdp: 471.2 },
-        'south-africa': { growthRate: 1.8, gdp: 421.5 }
-      }
+      updatedCountries,
+      isLive: isLiveFetch
     });
   } catch (error: any) {
     console.error('Server error updating data:', error);

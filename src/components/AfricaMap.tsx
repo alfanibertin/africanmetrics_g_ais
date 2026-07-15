@@ -1,14 +1,21 @@
 import React, { useState } from 'react';
-import { REGIONAL_SCREENSHOT_VALUES, COUNTRIES, getCountryFlag } from '../data';
+import { COUNTRIES, getCountryFlag } from '../data';
 import { CountryFlag } from './CountryFlag';
+import { getRegionalSummaries } from '../lib/aggregations';
+import { Country } from '../types';
+import { DataBadge } from './DataBadge';
 
 interface AfricaMapProps {
   selectedRegion: string | null;
   onSelectRegion: (region: 'Northern' | 'Western' | 'Eastern' | 'Central' | 'Southern' | null) => void;
+  countries?: Country[];
+  isLatestData?: boolean;
 }
 
-export default function AfricaMap({ selectedRegion, onSelectRegion }: AfricaMapProps) {
+export default function AfricaMap({ selectedRegion, onSelectRegion, countries, isLatestData }: AfricaMapProps) {
   const [hoveredRegion, setHoveredRegion] = useState<string | null>(null);
+  const displayCountries = countries || COUNTRIES;
+  const regionalSummaries = getRegionalSummaries(displayCountries);
 
   // Stylized coordinates for 5 simplified overlapping SVG regions of Africa representing earth, clay, and flora
   const regions = [
@@ -114,8 +121,8 @@ export default function AfricaMap({ selectedRegion, onSelectRegion }: AfricaMapP
           const isVisible = hoveredRegion === region.id || selectedRegion === region.id;
           if (!isVisible) return null;
 
-          const stats = REGIONAL_SCREENSHOT_VALUES[region.id as keyof typeof REGIONAL_SCREENSHOT_VALUES];
-          const regionCountries = COUNTRIES
+          const stats = regionalSummaries[region.id];
+          const regionCountries = displayCountries
             .filter((c) => c.region === region.id)
             .sort((a, b) => b.gdp - a.gdp);
 
@@ -128,10 +135,13 @@ export default function AfricaMap({ selectedRegion, onSelectRegion }: AfricaMapP
               }}
             >
               <div>
-                <p className="text-xs font-bold text-brand-text flex items-center gap-1.5 border-b border-brand-border pb-1.5 mb-2">
-                  <span className={`w-2.5 h-2.5 rounded-full ${region.dotColor}`} />
-                  {region.name} Overview
-                </p>
+                <div className="flex items-center justify-between border-b border-brand-border pb-1.5 mb-2 gap-2">
+                  <p className="text-xs font-bold text-brand-text flex items-center gap-1.5">
+                    <span className={`w-2.5 h-2.5 rounded-full ${region.dotColor}`} />
+                    {region.name} Overview
+                  </p>
+                  <DataBadge source={isLatestData ? 'live' : 'static'} year={isLatestData ? 2024 : 2026} />
+                </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-brand-muted font-mono mb-2">
                   <div className="flex justify-between">
                     <span>Countries:</span>

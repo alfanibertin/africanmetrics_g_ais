@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { COUNTRIES, getCountryFlag } from '../data';
+import React, { useState, useEffect } from 'react';
+import { ComposableMap, Geographies, Geography } from 'react-simple-maps';
+import { COUNTRIES } from '../data';
 import { CountryFlag } from './CountryFlag';
 import { getRegionalSummaries } from '../lib/aggregations';
 import { Country } from '../types';
@@ -12,12 +13,70 @@ interface AfricaMapProps {
   isLatestData?: boolean;
 }
 
+function getCountryRegion(name: string): 'Northern' | 'Western' | 'Eastern' | 'Central' | 'Southern' | null {
+  const n = name.toLowerCase();
+  
+  // Northern
+  if (n.includes('egypt') || n.includes('libya') || n.includes('tunisia') || n.includes('algeria') || n.includes('morocco') || n.includes('sahara') || n.includes('sudan') || n.includes('mauritania')) {
+    if (n.includes('south sudan')) return 'Eastern';
+    return 'Northern';
+  }
+  
+  // Southern
+  if (n.includes('south africa') || n.includes('namibia') || n.includes('botswana') || n.includes('lesotho') || n.includes('swaziland') || n.includes('eswatini')) {
+    return 'Southern';
+  }
+  
+  // Western
+  if (n.includes('nigeria') || n.includes('ghana') || n.includes('ivory coast') || n.includes("côte d'ivoire") || n.includes('senegal') || n.includes('mali') || n.includes('burkina') || n.includes('niger') || n.includes('guinea') || n.includes('benin') || n.includes('togo') || n.includes('sierra leone') || n.includes('liberia') || n.includes('gambia') || n.includes('cape verde') || n.includes('cabinda')) {
+    if (n.includes('equatorial guinea')) return 'Central';
+    return 'Western';
+  }
+  
+  // Central
+  if (n.includes('congo') || n.includes('cameroon') || n.includes('gabon') || n.includes('central african') || n.includes('chad') || n.includes('angola') || n.includes('sao tome')) {
+    return 'Central';
+  }
+  
+  // Eastern
+  if (n.includes('kenya') || n.includes('ethiopia') || n.includes('tanzania') || n.includes('uganda') || n.includes('rwanda') || n.includes('burundi') || n.includes('somalia') || n.includes('djibouti') || n.includes('eritrea') || n.includes('south sudan') || n.includes('mozambique') || n.includes('malawi') || n.includes('zambia') || n.includes('zimbabwe') || n.includes('madagascar') || n.includes('mauritius') || n.includes('seychelles') || n.includes('comoros') || n.includes('reunion') || n.includes('mayotte')) {
+    return 'Eastern';
+  }
+  
+  if (n.includes('west')) return 'Western';
+  if (n.includes('east')) return 'Eastern';
+  if (n.includes('north')) return 'Northern';
+  if (n.includes('south')) return 'Southern';
+  if (n.includes('central')) return 'Central';
+  
+  return null;
+}
+
 export default function AfricaMap({ selectedRegion, onSelectRegion, countries, isLatestData }: AfricaMapProps) {
   const [hoveredRegion, setHoveredRegion] = useState<string | null>(null);
+  const [geoData, setGeoData] = useState<any>(null);
+  const [fetchFailed, setFetchFailed] = useState<boolean>(false);
+
   const displayCountries = countries || COUNTRIES;
   const regionalSummaries = getRegionalSummaries(displayCountries);
 
-  // Stylized coordinates for 5 simplified overlapping SVG regions of Africa representing earth, clay, and flora
+  // Fetch GeoJSON in useEffect
+  useEffect(() => {
+    fetch('https://raw.githubusercontent.com/codeforgermany/click_that_hood/main/public/data/africa.geojson')
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load GeoJSON');
+        return res.json();
+      })
+      .then((data) => {
+        setGeoData(data);
+      })
+      .catch((err) => {
+        console.error('GeoJSON fetch error, falling back to simplified SVG map:', err);
+        setFetchFailed(true);
+      });
+  }, []);
+
+  // Simplified SVG fallback regions
   const regions = [
     {
       id: 'Northern',
@@ -83,38 +142,123 @@ export default function AfricaMap({ selectedRegion, onSelectRegion, countries, i
         </button>
       )}
 
-      {/* Stylized SVG Map */}
-      <div className="relative w-full max-w-[400px] h-[360px] mt-8">
-        <svg viewBox="0 0 380 380" className="w-full h-full">
-          <defs>
-            <pattern id="map-grid" width="20" height="20" patternUnits="userSpaceOnUse">
-              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(0,0,0,0.015)" strokeWidth="1" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#map-grid)" className="rounded-2xl" />
+      {/* Styled Map Container */}
+      <div className="relative w-full max-w-[400px] h-[360px] mt-8 flex items-center justify-center">
+        {geoData && !fetchFailed ? (
+          <ComposableMap
+            projection="geoMercator"
+            projectionConfig={{
+              scale: 250,
+              center: [17, 3],
+            }}
+            width={380}
+            height={360}
+            style={{ width: '100%', height: '100%' }}
+          >
+            <Geographies geography={geoData}>
+              {({ geographies }) =>
+                geographies.map((geo) => {
+                  const geoName = geo.properties.name || '';
+                  const regionId = getCountryRegion(geoName);
+                  if (!regionId) {
+                    // Render default unhighlighted/grey country style if not in our primary region list
+                    return (
+                      <Geography
+                        key={geo.rsmKey}
+                        geography={geo}
+                        style={{
+                          default: { fill: 'rgba(148, 163, 184, 0.05)', stroke: 'rgba(148, 163, 184, 0.2)', strokeWidth: 0.5, outline: 'none' },
+                          hover: { fill: 'rgba(148, 163, 184, 0.1)', stroke: 'rgba(148, 163, 184, 0.4)', strokeWidth: 0.5, outline: 'none' },
+                          pressed: { fill: 'rgba(148, 163, 184, 0.15)', stroke: 'rgba(148, 163, 184, 0.4)', strokeWidth: 0.5, outline: 'none' },
+                        }}
+                      />
+                    );
+                  }
 
-          {regions.map((region) => {
-            const isActive = selectedRegion === region.id;
-            const isHovered = hoveredRegion === region.id;
+                  const isActive = selectedRegion === regionId;
+                  const isHovered = hoveredRegion === regionId;
 
-            return (
-              <path
-                key={region.id}
-                d={region.path}
-                className={`transition-all duration-300 stroke-[1.5] cursor-pointer ${
-                  isActive ? region.activeColor : region.color
-                }`}
-                onClick={() => onSelectRegion(isActive ? null : (region.id as any))}
-                onMouseEnter={() => setHoveredRegion(region.id)}
-                onMouseLeave={() => setHoveredRegion(null)}
-                style={{
-                  filter: isHovered || isActive ? 'drop-shadow(0 4px 6px rgba(0,0,0,0.05))' : 'none',
-                  transformOrigin: 'center',
-                }}
-              />
-            );
-          })}
-        </svg>
+                  let baseColor = 'rgba(202, 138, 4, 0.08)';
+                  let hoverColor = 'rgba(202, 138, 4, 0.18)';
+                  let activeColor = 'rgba(202, 138, 4, 0.28)';
+                  let strokeColor = 'rgba(202, 138, 4, 0.5)';
+
+                  if (regionId === 'Western') {
+                    baseColor = 'rgba(15, 118, 110, 0.08)';
+                    hoverColor = 'rgba(15, 118, 110, 0.18)';
+                    activeColor = 'rgba(15, 118, 110, 0.28)';
+                    strokeColor = 'rgba(15, 118, 110, 0.5)';
+                  } else if (regionId === 'Eastern') {
+                    baseColor = 'rgba(217, 119, 6, 0.08)';
+                    hoverColor = 'rgba(217, 119, 6, 0.18)';
+                    activeColor = 'rgba(217, 119, 6, 0.28)';
+                    strokeColor = 'rgba(217, 119, 6, 0.5)';
+                  } else if (regionId === 'Central') {
+                    baseColor = 'rgba(21, 128, 61, 0.08)';
+                    hoverColor = 'rgba(21, 128, 61, 0.18)';
+                    activeColor = 'rgba(21, 128, 61, 0.28)';
+                    strokeColor = 'rgba(21, 128, 61, 0.5)';
+                  } else if (regionId === 'Southern') {
+                    baseColor = 'rgba(154, 52, 18, 0.08)';
+                    hoverColor = 'rgba(154, 52, 18, 0.18)';
+                    activeColor = 'rgba(154, 52, 18, 0.28)';
+                    strokeColor = 'rgba(154, 52, 18, 0.5)';
+                  }
+
+                  const fillColor = isActive ? activeColor : (isHovered ? hoverColor : baseColor);
+                  const borderStroke = isActive ? strokeColor.replace('0.5', '1.0') : strokeColor;
+
+                  return (
+                    <Geography
+                      key={geo.rsmKey}
+                      geography={geo}
+                      onClick={() => onSelectRegion(isActive ? null : regionId)}
+                      onMouseEnter={() => setHoveredRegion(regionId)}
+                      onMouseLeave={() => setHoveredRegion(null)}
+                      style={{
+                        default: { fill: fillColor, stroke: borderStroke, strokeWidth: 0.5, outline: 'none', transition: 'all 0.3s' },
+                        hover: { fill: hoverColor, stroke: borderStroke, strokeWidth: 0.8, outline: 'none', transition: 'all 0.3s' },
+                        pressed: { fill: activeColor, stroke: borderStroke, strokeWidth: 0.8, outline: 'none' },
+                      }}
+                    />
+                  );
+                })
+              }
+            </Geographies>
+          </ComposableMap>
+        ) : (
+          /* SVG 5-polygon Fallback Map */
+          <svg viewBox="0 0 380 380" className="w-full h-full">
+            <defs>
+              <pattern id="map-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(0,0,0,0.015)" strokeWidth="1" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#map-grid)" className="rounded-2xl" />
+
+            {regions.map((region) => {
+              const isActive = selectedRegion === region.id;
+              const isHovered = hoveredRegion === region.id;
+
+              return (
+                <path
+                  key={region.id}
+                  d={region.path}
+                  className={`transition-all duration-300 stroke-[1.5] cursor-pointer ${
+                    isActive ? region.activeColor : region.color
+                  }`}
+                  onClick={() => onSelectRegion(isActive ? null : (region.id as any))}
+                  onMouseEnter={() => setHoveredRegion(region.id)}
+                  onMouseLeave={() => setHoveredRegion(null)}
+                  style={{
+                    filter: isHovered || isActive ? 'drop-shadow(0 4px 6px rgba(0,0,0,0.05))' : 'none',
+                    transformOrigin: 'center',
+                  }}
+                />
+              );
+            })}
+          </svg>
+        )}
 
         {/* Dynamic Tooltip Info overlay */}
         {regions.map((region) => {
@@ -137,7 +281,7 @@ export default function AfricaMap({ selectedRegion, onSelectRegion, countries, i
               <div>
                 <div className="flex items-center justify-between border-b border-brand-border pb-1.5 mb-2 gap-2">
                   <p className="text-xs font-bold text-brand-text flex items-center gap-1.5">
-                    <span className={`w-2.5 h-2.5 rounded-full ${region.dotColor}`} />
+                    <span className={`w-2.5 h-2.5 rounded-full ${region.dotColor || 'bg-[#ca8a04]'}`} />
                     {region.name} Overview
                   </p>
                   <DataBadge source={isLatestData ? 'live' : 'static'} year={isLatestData ? 2024 : 2026} />
@@ -164,7 +308,7 @@ export default function AfricaMap({ selectedRegion, onSelectRegion, countries, i
 
               {/* Individual countries list */}
               <div className="border-t border-brand-border pt-2 flex flex-col min-h-0">
-                <div className="text-[10px] uppercase font-mono font-bold tracking-wider text-slate-500 mb-1 flex justify-between">
+                <div className="text-[11px] uppercase font-mono font-bold tracking-wider text-slate-500 mb-1 flex justify-between">
                   <span>Sovereign Entity</span>
                   <div className="flex gap-4">
                     <span className="w-16 text-right">GDP</span>

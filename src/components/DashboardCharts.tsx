@@ -401,10 +401,13 @@ export default function DashboardCharts({
       <div className="w-full lg:w-[230px] shrink-0 border-t lg:border-t-0 lg:border-l border-brand-border/40 pt-4 lg:pt-0 lg:pl-5.5 flex flex-col justify-between font-sans">
         <div className="space-y-3.5">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold font-mono tracking-wider text-amber-700 uppercase bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/15">
-              Interactive Trend
+            <span 
+              className="text-[11px] font-bold font-mono tracking-wider text-amber-700 uppercase bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/15"
+              title="Historical points are simulated, not sourced"
+            >
+              Illustrative Trend (Simulated)
             </span>
-            <div className="flex items-center gap-1 text-[10px] font-mono text-brand-dim">
+            <div className="flex items-center gap-1 text-[11px] font-mono text-brand-dim">
               <Calendar className="w-3 h-3" />
               <span>{currentYear}</span>
             </div>
@@ -414,7 +417,7 @@ export default function DashboardCharts({
             <span className="text-xs font-bold text-brand-text block tracking-tight truncate">
               {hoveredRegion === 'All' ? 'All-Africa Average' : `${hoveredRegion} Africa`}
             </span>
-            <span className="text-[10px] text-brand-muted font-mono block mt-0.5">
+            <span className="text-[11px] text-brand-muted font-mono block mt-0.5">
               {indicatorLabel}
             </span>
           </div>
@@ -424,11 +427,11 @@ export default function DashboardCharts({
               <span className="text-xl font-bold font-display text-brand-text">
                 {trendIndicator === 'gdp' ? `$${currentValue.toFixed(1)}B` : `${currentValue.toFixed(1)}%`}
               </span>
-              <span className="text-[9px] text-brand-dim font-mono block mt-0.5">
+              <span className="text-[11px] text-brand-dim font-mono block mt-0.5">
                 Valuation Profile
               </span>
             </div>
-            <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-sm ${
+            <span className={`text-[11px] font-mono font-bold px-1.5 py-0.5 rounded-sm ${
               changePercent >= 0 
                 ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/15' 
                 : 'bg-rose-500/10 text-rose-700 border border-rose-500/15'
@@ -485,7 +488,7 @@ export default function DashboardCharts({
           </div>
 
           {/* Interactive Year Navigation Rails */}
-          <div className="flex justify-between text-[9px] font-mono font-bold text-brand-dim mt-2 px-1">
+          <div className="flex justify-between text-[11px] font-mono font-bold text-brand-dim mt-2 px-1">
             {years.map((year, idx) => (
               <button
                 key={year}

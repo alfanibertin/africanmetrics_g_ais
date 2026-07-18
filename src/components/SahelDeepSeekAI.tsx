@@ -19,19 +19,9 @@ import {
 interface SahelDeepSeekAIProps {
   corridor: string;
   securityRatio: number;
-  aesStates: Array<{
-    id: string;
-    name: string;
-    gdp: number;
-    population: number;
-    growthRate: number;
-    unemployment: number;
-    debtToGdp: number;
-    highlight: string;
-  }>;
 }
 
-export default function SahelDeepSeekAI({ corridor, securityRatio, aesStates }: SahelDeepSeekAIProps) {
+export default function SahelDeepSeekAI({ corridor, securityRatio }: SahelDeepSeekAIProps) {
   const [focus, setFocus] = useState<string>('financial');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [response, setResponse] = useState<string>('');
@@ -55,8 +45,7 @@ export default function SahelDeepSeekAI({ corridor, securityRatio, aesStates }: 
         body: JSON.stringify({
           corridor,
           securityRatio,
-          focus,
-          countries: aesStates
+          focus
         }),
       });
 
@@ -138,12 +127,12 @@ export default function SahelDeepSeekAI({ corridor, securityRatio, aesStates }: 
           <AESFlagIcon size="md" />
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold font-mono tracking-wider text-emerald-700 uppercase bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+              <span className="text-[11px] font-bold font-mono tracking-wider text-emerald-700 uppercase bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
                 DeepSeek V3 (Live)
               </span>
-              <span className="text-[10px] text-emerald-700 font-mono tracking-wider uppercase flex items-center gap-1.5 font-semibold">
+              <span className="text-[11px] text-emerald-700 font-mono tracking-wider uppercase flex items-center gap-1.5 font-semibold">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-                Cognitive Subsystem Active
+                Cognitive Unit Enabled
               </span>
             </div>
             <h3 className="text-base font-bold text-brand-text font-display mt-1">AES Policy Intelligence Explorer</h3>
@@ -160,7 +149,7 @@ export default function SahelDeepSeekAI({ corridor, securityRatio, aesStates }: 
 
           <div className="space-y-3.5">
             <div>
-              <label className="block text-[10px] font-mono font-bold uppercase tracking-widest text-brand-dim mb-2">
+              <label className="block text-[11px] font-mono font-bold uppercase tracking-widest text-brand-dim mb-2">
                 1. Select Analytical Lens
               </label>
               <div className="grid grid-cols-1 gap-2">
@@ -175,7 +164,7 @@ export default function SahelDeepSeekAI({ corridor, securityRatio, aesStates }: 
                   <Landmark className={`w-4 h-4 mt-0.5 shrink-0 ${focus === 'financial' ? 'text-amber-700' : 'text-slate-500'}`} />
                   <div>
                     <span className={`block font-bold ${focus === 'financial' ? 'text-brand-text' : 'text-brand-muted'}`}>Financial & Economic Analysis</span>
-                    <span className="text-[10px] text-brand-dim font-normal mt-0.5 block">Examine macro-fiscal health, budget balances, deficit, & external/internal debts.</span>
+                    <span className="text-[11px] text-brand-dim font-normal mt-0.5 block">Examine macro-fiscal health, budget balances, deficit, & external/internal debts.</span>
                   </div>
                 </button>
 
@@ -190,7 +179,7 @@ export default function SahelDeepSeekAI({ corridor, securityRatio, aesStates }: 
                   <Coins className={`w-4 h-4 mt-0.5 shrink-0 ${focus === 'tripartite' ? 'text-amber-700' : 'text-slate-500'}`} />
                   <div>
                     <span className={`block font-bold ${focus === 'tripartite' ? 'text-brand-text' : 'text-brand-muted'}`}>Monetary Autonomy & Sahel Currency</span>
-                    <span className="text-[10px] text-brand-dim font-normal mt-0.5 block">Analyze CFA Franc exit strategies & gold reserve backing.</span>
+                    <span className="text-[11px] text-brand-dim font-normal mt-0.5 block">Analyze CFA Franc exit strategies & gold reserve backing.</span>
                   </div>
                 </button>
 
@@ -205,7 +194,7 @@ export default function SahelDeepSeekAI({ corridor, securityRatio, aesStates }: 
                   <TrendingUp className={`w-4 h-4 mt-0.5 shrink-0 ${focus === 'logistics' ? 'text-amber-700' : 'text-slate-500'}`} />
                   <div>
                     <span className={`block font-bold ${focus === 'logistics' ? 'text-brand-text' : 'text-brand-muted'}`}>Customs Union & Logistics Corridors</span>
-                    <span className="text-[10px] text-brand-dim font-normal mt-0.5 block">Examine customs harmonization and transport corridors.</span>
+                    <span className="text-[11px] text-brand-dim font-normal mt-0.5 block">Examine customs harmonization and transport corridors.</span>
                   </div>
                 </button>
 
@@ -220,7 +209,7 @@ export default function SahelDeepSeekAI({ corridor, securityRatio, aesStates }: 
                   <Shield className={`w-4 h-4 mt-0.5 shrink-0 ${focus === 'budgetary' ? 'text-amber-700' : 'text-slate-500'}`} />
                   <div>
                     <span className={`block font-bold ${focus === 'budgetary' ? 'text-brand-text' : 'text-brand-muted'}`}>Strategic Spending Balance (Security vs. Development)</span>
-                    <span className="text-[10px] text-brand-dim font-normal mt-0.5 block">Evaluate security overhead vs social & infra capital.</span>
+                    <span className="text-[11px] text-brand-dim font-normal mt-0.5 block">Evaluate security overhead vs social & infra capital.</span>
                   </div>
                 </button>
 
@@ -235,7 +224,7 @@ export default function SahelDeepSeekAI({ corridor, securityRatio, aesStates }: 
                   <Cpu className={`w-4 h-4 mt-0.5 shrink-0 ${focus === 'debt' ? 'text-amber-700' : 'text-slate-500'}`} />
                   <div>
                     <span className={`block font-bold ${focus === 'debt' ? 'text-brand-text' : 'text-brand-muted'}`}>Sovereign Debt & Joint Investment</span>
-                    <span className="text-[10px] text-brand-dim font-normal mt-0.5 block">Model unified debt notes & Sahel development banks.</span>
+                    <span className="text-[11px] text-brand-dim font-normal mt-0.5 block">Model unified debt notes & Sahel development banks.</span>
                   </div>
                 </button>
               </div>
@@ -268,7 +257,7 @@ export default function SahelDeepSeekAI({ corridor, securityRatio, aesStates }: 
               <Loader2 className="w-9 h-9 text-amber-700 animate-spin" />
               <div className="text-center space-y-1">
                 <p className="text-xs font-mono text-amber-800 font-bold tracking-wider">AI POLICY ANALYSIS PIPELINE SECURED</p>
-                <p className="text-[10px] text-brand-dim max-w-sm">
+                <p className="text-[11px] text-brand-dim max-w-sm">
                   Calculating regional equilibrium margins, transit tariff friction, and budgetary reallocation trade-offs...
                 </p>
               </div>
@@ -287,7 +276,7 @@ export default function SahelDeepSeekAI({ corridor, securityRatio, aesStates }: 
                 <span className="w-2 h-2 rounded-full bg-amber-600 animate-pulse shrink-0 mt-1" />
                 <div>
                   <span className="block">SIMULATED SCENARIO MODE</span>
-                  <span className="text-[10px] text-brand-dim font-normal block mt-0.5">Illustrative analysis only. Configure a live API key for real-time model synthesis.</span>
+                  <span className="text-[11px] text-brand-dim font-normal block mt-0.5">Illustrative analysis only. Configure a live API key for real-time model synthesis.</span>
                 </div>
               </div>
             )
@@ -296,11 +285,11 @@ export default function SahelDeepSeekAI({ corridor, securityRatio, aesStates }: 
           {/* Engine Header / Badge */}
           {engine && (
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2 bg-slate-300/40 border border-brand-border px-3.5 py-2 rounded-xl">
-              <div className="flex items-center gap-2 text-[10.5px] font-mono">
+              <div className="flex items-center gap-2 text-[11px] font-mono">
                 <span className="text-brand-dim">Cognitive Engine:</span>
                 <span className="text-amber-800 font-bold">{engine}</span>
               </div>
-              <div className="flex items-center gap-1 text-[9px] text-brand-dim font-mono">
+              <div className="flex items-center gap-1 text-[11px] text-brand-dim font-mono">
                 <span>Status:</span>
                 <span className="text-emerald-700 font-bold uppercase">SECURED</span>
               </div>
@@ -312,7 +301,7 @@ export default function SahelDeepSeekAI({ corridor, securityRatio, aesStates }: 
               <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
               <div className="space-y-0.5">
                 <span className="text-amber-800 font-bold block">Interactive Explorer Environment Notice:</span>
-                <span className="text-brand-dim block text-[10px]">{notice}</span>
+                <span className="text-brand-dim block text-[11px]">{notice}</span>
               </div>
             </div>
           )}
@@ -329,13 +318,13 @@ export default function SahelDeepSeekAI({ corridor, securityRatio, aesStates }: 
                 Choose an analytical lens on the left and click **Generate Policy Projections** to compute macro-structural outcomes.
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-2 max-w-sm">
-                <span className="text-[9.5px] font-mono bg-slate-300/45 border border-slate-400/30 text-brand-muted px-2 py-1 rounded">
+                <span className="text-[11px] font-mono bg-slate-300/45 border border-slate-400/30 text-brand-muted px-2 py-1 rounded">
                   Lomé, Cotonou, or Trans-Sahara
                 </span>
-                <span className="text-[9.5px] font-mono bg-slate-300/45 border border-slate-400/30 text-brand-muted px-2 py-1 rounded">
+                <span className="text-[11px] font-mono bg-slate-300/45 border border-slate-400/30 text-brand-muted px-2 py-1 rounded">
                   Security Budget Sensitivity
                 </span>
-                <span className="text-[9.5px] font-mono bg-slate-300/45 border border-slate-400/30 text-brand-muted px-2 py-1 rounded">
+                <span className="text-[11px] font-mono bg-slate-300/45 border border-slate-400/30 text-brand-muted px-2 py-1 rounded">
                   Sovereign Trade-offs
                 </span>
               </div>

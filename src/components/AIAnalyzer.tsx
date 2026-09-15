@@ -115,7 +115,7 @@ export default function AIAnalyzer({
   ];
 
   return (
-    <div className="bg-brand-card border border-brand-border rounded-3xl p-6 flex flex-col h-full shadow-xs" id="gemini-ai-analyzer-panel">
+    <div className="bg-brand-card border border-brand-border rounded-3xl p-6 flex flex-col h-full shadow-xs" id="deepseek-ai-analyzer-panel">
       <div className="flex items-center justify-between border-b border-brand-border pb-4 mb-5">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-[#c2410c]/10 border border-[#c2410c]/20 rounded-xl text-[#c2410c]">
@@ -263,14 +263,14 @@ export default function AIAnalyzer({
             isLive ? (
               <div className="mb-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 text-xs rounded-xl p-3 flex items-center gap-2.5 shadow-2xs font-semibold">
                 <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse shrink-0" />
-                <span>LIVE REPORT MODE — Powered by active Gemini 2.5 API.</span>
+                <span>LIVE REPORT MODE — Powered by active DeepSeek AI.</span>
               </div>
             ) : (
               <div className="mb-4 bg-amber-500/10 border border-amber-500/30 text-amber-800 text-xs rounded-xl p-3 flex items-start gap-2.5 shadow-2xs font-semibold">
                 <span className="w-2 h-2 rounded-full bg-amber-600 animate-pulse shrink-0 mt-1" />
                 <div>
                   <span className="block">SIMULATED BRIEF MODE</span>
-                  <span className="text-[10px] text-brand-dim font-normal block mt-0.5">Illustrative analysis only. Set a GEMINI_API_KEY in secrets to enable live real-time analysis.</span>
+                  <span className="text-[10px] text-brand-dim font-normal block mt-0.5">Illustrative analysis only. Set a DEEPSEEK_API_KEY in secrets to enable live real-time analysis.</span>
                 </div>
               </div>
             )

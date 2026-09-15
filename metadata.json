@@ -1,6 +1,6 @@
 {
   "name": "African Economic Dashboard",
-  "description": "An interactive dashboard showcasing economic indicators across 55 African countries, grouped by region, with charts, spotlight insights, and AI-powered generation.",
+  "description": "An interactive dashboard showcasing economic, FDI, and health indicators across African countries, with World Bank fertility rate surveillance (SP.DYN.TFRT.IN), regional benchmarks, charts, and AI-powered intelligence.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

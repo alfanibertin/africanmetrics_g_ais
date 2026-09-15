@@ -10,10 +10,11 @@ import OverviewPage from './pages/OverviewPage';
 import SahelPage from './pages/SahelPage';
 import RegionalPage from './pages/RegionalPage';
 import CountryDetailPage from './pages/CountryDetailPage';
+import HealthPage from './pages/HealthPage';
 
 export default function App() {
   // Navigation State
-  const [activePage, setActivePage] = useState<'all' | 'sahel' | 'regional' | 'detail'>('all');
+  const [activePage, setActivePage] = useState<'all' | 'sahel' | 'regional' | 'detail' | 'health'>('all');
   
   // Core State
   const [countries, setCountries] = useState<Country[]>(COUNTRIES);
@@ -85,7 +86,7 @@ export default function App() {
     }, 700);
   };
 
-  // Update Economic Data (Server-side Gemini & World Bank Integration)
+  // Update Economic Data (Server-side DeepSeek AI & World Bank Integration)
   const handleUpdateEconomicData = async () => {
     setIsUpdating(true);
     try {
@@ -112,7 +113,7 @@ export default function App() {
             return c;
           });
         });
-        triggerNotification('Successfully updated indicators and generated economic bulletins with Gemini!');
+        triggerNotification('Successfully updated indicators and generated economic bulletins with DeepSeek AI!');
       } else {
         triggerNotification('World Bank live database service is currently unavailable. No dummy data was fabricated.');
       }
@@ -153,21 +154,24 @@ export default function App() {
             <div className="flex items-center gap-2 mb-1">
               <span className="px-2.5 py-0.5 bg-slate-500/10 border border-slate-500/15 text-[11px] text-slate-700 font-mono rounded-full uppercase tracking-wider font-semibold">
                 {activePage === 'all' && 'Surveillance Engine'}
+                {activePage === 'health' && 'Health & Demographic Surveillance'}
                 {activePage === 'sahel' && 'Geopolitical Policy Explorer'}
-                {activePage === 'regional' && 'Comparative Analysis'}
+                {activePage === 'regional' && 'China-Africa FDI & Regional Hub'}
                 {activePage === 'detail' && 'Surveillance Dossier'}
               </span>
             </div>
             <h2 className="text-2xl font-bold tracking-tight text-brand-text">
               {activePage === 'all' && 'All Africa Macroeconomic Indicators'}
+              {activePage === 'health' && 'African Health & Demographics: Fertility Rate Surveillance'}
               {activePage === 'sahel' && 'Sahel Alliance Interactive Explorer (Burkina, Mali, Niger)'}
-              {activePage === 'regional' && 'Regional Economic Hub Analysis'}
+              {activePage === 'regional' && 'China-Africa Foreign Direct Investment (FDI) & Regional Hub'}
               {activePage === 'detail' && `Surveillance Dossier: ${selectedDetailCountry.name}`}
             </h2>
             <p className="text-xs text-brand-muted mt-1 max-w-3xl">
               {activePage === 'all' && 'Comprehensive surveillance across 55 African sovereign economies with interactive charting, filters, and smart LLM database updates.'}
+              {activePage === 'health' && 'World Bank indicator SP.DYN.TFRT.IN surveillance tracking fertility rates, demographic transitions, and reproductive trends across 54 African nations.'}
               {activePage === 'sahel' && 'Logistical corridor routing simulation, border security allocations, and defense-vs-development spending trade-off analysis.'}
-              {activePage === 'regional' && 'Deep-dive into regional economic aggregations. Compare GDP weightings, regional unemployment, and average population metrics.'}
+              {activePage === 'regional' && 'Surveillance and sector intelligence on Chinese Foreign Direct Investment stock ($53.8B), 5-year CAGR trajectory, regional allocations, and top sovereign destinations.'}
               {activePage === 'detail' && 'AI-powered macroeconomic diagnostic tools, fiscal risk forecasting, and comprehensive structural policy recommendations.'}
             </p>
           </div>
@@ -190,6 +194,10 @@ export default function App() {
             isUpdating={isUpdating}
             handleUpdateEconomicData={handleUpdateEconomicData}
           />
+        )}
+
+        {activePage === 'health' && (
+          <HealthPage countries={countries} />
         )}
 
         {activePage === 'sahel' && (

@@ -4,7 +4,8 @@ import { Country } from '../types';
 import { AESFlagIcon } from '../components/AESFlagIcon';
 import { CountryFlag } from '../components/CountryFlag';
 import { AESTradeWITS } from '../components/AESTradeWITS';
-import SahelDeepSeekAI from '../components/SahelDeepSeekAI';
+import ExternalDebtDetails from '../components/ExternalDebtDetails';
+import { SahelWorldBankIMFDataBoard } from '../components/SahelWorldBankIMFDataBoard';
 
 interface SahelPageProps {
   countries: Country[];
@@ -75,9 +76,6 @@ const aesBudgetProfiles: Record<string, BudgetProfile> = {
 };
 
 export default function SahelPage({ countries }: SahelPageProps) {
-  const [sahelTradeCorridor, setSahelTradeCorridor] = useState<'togo' | 'benin' | 'trans-sahara'>('togo');
-  const [sahelSecurityBudgetRatio, setSahelSecurityBudgetRatio] = useState<number>(45);
-
   const aesStates = useMemo(() => {
     return countries.filter(c => ['burkina-faso', 'mali', 'niger'].includes(c.id));
   }, [countries]);
@@ -378,75 +376,19 @@ export default function SahelPage({ countries }: SahelPageProps) {
         ))}
       </div>
 
+      {/* SAHEL ALLIANCE WORLD BANK & IMF LIVE MACROECONOMIC DATA HUB */}
+      <div className="my-8">
+        <SahelWorldBankIMFDataBoard />
+      </div>
+
+      {/* EXTERNAL DEBT DETAILS TABULAR VIEW */}
+      <div className="my-8">
+        <ExternalDebtDetails countries={countries} />
+      </div>
+
       {/* AES WORLD BANK WITS TRADE STATISTICS */}
       <div className="my-8">
         <AESTradeWITS />
-      </div>
-
-      {/* INTERACTIVE TRADE CORRIDOR CONTROLLER & SLIDERS */}
-      <div className="glass-panel rounded-3xl p-6 grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
-        <div className="md:col-span-4 space-y-5">
-          <div>
-            <h3 className="text-base font-bold text-brand-text font-display tracking-tight">Corridor & Budget Simulator</h3>
-            <p className="text-xs text-brand-muted mt-0.5">Model strategic logistical variables to pass to the AI synthesis engine</p>
-          </div>
-
-          {/* Trade corridor choice */}
-          <div className="space-y-2.5">
-            <label className="block text-[11px] font-mono font-bold uppercase tracking-widest text-brand-dim">
-              Trade Corridor Alignment
-            </label>
-            <div className="grid grid-cols-1 gap-2 text-xs">
-              {(['togo', 'benin', 'trans-sahara'] as const).map((corridor) => (
-                <button
-                  key={corridor}
-                  onClick={() => setSahelTradeCorridor(corridor)}
-                  className={`p-3 text-left rounded-xl border transition-all cursor-pointer ${
-                    sahelTradeCorridor === corridor
-                      ? 'bg-amber-500/10 border-amber-500/40 text-brand-text font-semibold'
-                      : 'bg-brand-input hover:bg-brand-border/40 border-brand-border text-brand-muted'
-                  }`}
-                >
-                  <span className="block font-bold capitalize">
-                    {corridor === 'trans-sahara' ? 'Trans-Sahara Highway Alignment' : `Port of ${corridor === 'togo' ? 'Lomé (Togo)' : 'Cotonou (Benin)'}`}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Security slider */}
-          <div className="space-y-2.5 pt-2">
-            <div className="flex justify-between items-baseline">
-              <label className="block text-[11px] font-mono font-bold uppercase tracking-widest text-brand-dim">
-                Security Capital Allocation
-              </label>
-              <span className="text-xs font-mono font-bold text-brand-text bg-slate-300/40 px-2 py-0.5 rounded border border-brand-border">
-                {sahelSecurityBudgetRatio}%
-              </span>
-            </div>
-            <input
-              type="range"
-              min="15"
-              max="75"
-              step="5"
-              value={sahelSecurityBudgetRatio}
-              onChange={(e) => setSahelSecurityBudgetRatio(Number(e.target.value))}
-              className="w-full h-1.5 bg-slate-300/40 rounded-lg appearance-none cursor-pointer accent-amber-600"
-            />
-            <p className="text-[11px] text-brand-dim leading-relaxed font-sans">
-              Adjusting defense spending parameters creates a budget trade-off on health, education, and infrastructure.
-            </p>
-          </div>
-        </div>
-
-        <div className="md:col-span-8 space-y-6">
-          {/* DEEPSEEK AI POLICY PROJECTIONS */}
-          <SahelDeepSeekAI
-            corridor={sahelTradeCorridor}
-            securityRatio={sahelSecurityBudgetRatio}
-          />
-        </div>
       </div>
     </div>
   );

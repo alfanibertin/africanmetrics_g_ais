@@ -1,9 +1,9 @@
 import React from 'react';
-import { Globe, Shield, TrendingUp, FileText, Download, RefreshCw } from 'lucide-react';
+import { Globe, Shield, TrendingUp, FileText, Download, RefreshCw, HeartPulse } from 'lucide-react';
 
 interface HeaderProps {
-  activePage: 'all' | 'sahel' | 'regional' | 'detail';
-  setActivePage: (page: 'all' | 'sahel' | 'regional' | 'detail') => void;
+  activePage: 'all' | 'sahel' | 'regional' | 'detail' | 'health';
+  setActivePage: (page: 'all' | 'sahel' | 'regional' | 'detail' | 'health') => void;
   handleExportCSV: () => void;
   handleRefresh: () => void;
   isRefreshing: boolean;
@@ -47,7 +47,7 @@ export default function Header({
           <nav className="flex flex-wrap items-center gap-1.5" aria-label="Global navigation">
             <button
               onClick={() => setActivePage('all')}
-              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer flex items-center gap-2 ${
+              className={`px-3.5 py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer flex items-center gap-2 ${
                 activePage === 'all'
                   ? 'bg-teal-500 text-slate-950 shadow-md shadow-teal-500/20'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800'
@@ -57,8 +57,19 @@ export default function Header({
               All Africa Core Data
             </button>
             <button
+              onClick={() => setActivePage('health')}
+              className={`px-3.5 py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer flex items-center gap-2 ${
+                activePage === 'health'
+                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <HeartPulse className="w-3.5 h-3.5" />
+              Health & Demographics
+            </button>
+            <button
               onClick={() => setActivePage('sahel')}
-              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer flex items-center gap-2 ${
+              className={`px-3.5 py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer flex items-center gap-2 ${
                 activePage === 'sahel'
                   ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800'
@@ -69,25 +80,25 @@ export default function Header({
             </button>
             <button
               onClick={() => setActivePage('regional')}
-              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer flex items-center gap-2 ${
+              className={`px-3.5 py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer flex items-center gap-2 ${
                 activePage === 'regional'
-                  ? 'bg-teal-700 text-white shadow-md shadow-teal-700/20'
+                  ? 'bg-red-600 text-white shadow-md shadow-red-600/20'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800'
               }`}
             >
               <TrendingUp className="w-3.5 h-3.5" />
-              Regional Hub
+              Regional Hub (China FDI)
             </button>
             <button
               onClick={() => setActivePage('detail')}
-              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer flex items-center gap-2 ${
+              className={`px-3.5 py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer flex items-center gap-2 ${
                 activePage === 'detail'
                   ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800'
               }`}
             >
               <FileText className="w-3.5 h-3.5" />
-              Detailed Country Profiles
+              Country Profiles
             </button>
           </nav>
 
@@ -99,7 +110,7 @@ export default function Header({
               title="Export Database to CSV"
             >
               <Download className="w-3.5 h-3.5 text-slate-400" />
-              <span>Export CSV</span>
+              <span className="hidden sm:inline">Export CSV</span>
             </button>
 
             <button
@@ -109,7 +120,7 @@ export default function Header({
               title="Reset Database Baseline"
             >
               <RefreshCw className={`w-3.5 h-3.5 text-slate-400 ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span>{isRefreshing ? 'Resetting...' : 'Reset'}</span>
+              <span className="hidden sm:inline">{isRefreshing ? 'Resetting...' : 'Reset'}</span>
             </button>
           </div>
 
@@ -118,3 +129,4 @@ export default function Header({
     </header>
   );
 }
+

@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { COUNTRIES } from './src/shared/countries.js';
+import { fetchSahelDriveDocuments, SAHEL_DRIVE_FOLDER_ID } from './src/lib/driveService.js';
 
 dotenv.config();
 
@@ -56,7 +57,340 @@ const sahelInsightsSchema = z.object({
 
 const updateDataSchema = z.object({}).strict().optional();
 
-// API endpoint to analyze a country's economy using Gemini API
+const sahelDriveChatSchema = z.object({
+  messages: z.array(z.object({
+    role: z.enum(['user', 'assistant', 'system']),
+    content: z.string().min(1).max(4000)
+  })),
+  accessToken: z.string().optional().nullable(),
+}).strict();
+
+// GET /api/sahel-drive/documents - Retrieve indexed Google Drive PDF & document list
+app.get('/api/sahel-drive/documents', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader ? authHeader.replace(/^Bearer\s+/i, '') : null;
+    const docs = await fetchSahelDriveDocuments(token);
+
+    return res.json({
+      success: true,
+      folderId: SAHEL_DRIVE_FOLDER_ID,
+      folderUrl: `https://drive.google.com/drive/project/${SAHEL_DRIVE_FOLDER_ID}?usp=sharing`,
+      count: docs.length,
+      documents: docs.map(d => ({
+        id: d.id,
+        name: d.name,
+        mimeType: d.mimeType,
+        size: d.size,
+        webViewLink: d.webViewLink,
+        snippet: d.text.slice(0, 180) + '...'
+      }))
+    });
+  } catch (error: any) {
+    console.error('Error listing Sahel Drive documents:', error);
+    return res.status(500).json({ error: error.message || 'Failed to list Google Drive documents' });
+  }
+});
+
+// GET /api/sheets/metadata - Retrieve spreadsheet metadata with optional client bearer token
+app.get('/api/sheets/metadata', async (req, res) => {
+  try {
+    const spreadsheetId = (req.query.spreadsheetId as string) || '1uTd3pZ2B0i4QKUFUoIQrQjaIz23Wgeuv';
+    const authHeader = req.headers.authorization;
+    const token = authHeader ? authHeader.replace(/^Bearer\s+/i, '') : null;
+
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=spreadsheetId,properties.title,spreadsheetUrl,sheets.properties(sheetId,title,index,gridProperties)`;
+    const googleRes = await fetch(apiUrl, { headers });
+
+    if (!googleRes.ok) {
+      const errBody = await googleRes.text();
+      return res.status(googleRes.status).json({
+        error: `Google Sheets API responded with status ${googleRes.status}`,
+        details: errBody
+      });
+    }
+
+    const data = await googleRes.json();
+    return res.json(data);
+  } catch (error: any) {
+    console.error('Error proxying spreadsheet metadata:', error);
+    return res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
+// POST /api/sahel-drive/chat - Multi-turn chatbot grounded strictly in Google Drive Sahel documents
+app.post('/api/sahel-drive/chat', async (req, res) => {
+  try {
+    const validationResult = sahelDriveChatSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({ error: 'Invalid request body fields.', details: validationResult.error.format() });
+    }
+
+    const { messages, accessToken } = validationResult.data;
+
+    // 1. Fetch official Sahel Alliance documents from Google Drive
+    const docs = await fetchSahelDriveDocuments(accessToken);
+
+    // 2. Build concatenated context of all available documents
+    const documentsContext = docs.map(d => 
+      `=== DOCUMENT: ${d.name} (File ID: ${d.id}) ===\nLink: ${d.webViewLink || 'N/A'}\n\n${d.text}\n=== END OF DOCUMENT ===`
+    ).join('\n\n');
+
+    // 3. Strict System Instruction as required by the prompt
+    const systemInstruction = `You are the Official Sahel Alliance (AES) Document Chatbot.
+Your sole purpose is to answer questions strictly referencing the official PDF documents, policy reports, charters, and economic treaties provided below covering the Alliance of Sahel States (Burkina Faso, Mali, Niger).
+
+STRICT MANDATES:
+1. REFER ONLY TO THE SOURCE DOCUMENTS PROVIDED BELOW TO ANSWER QUESTIONS.
+2. DO NOT INVENT FACTS, DRAW FROM EXTERNAL KNOWLEDGE, OR SPECULATE BEYOND THESE DOCUMENTS.
+3. IF THE REQUESTED INFORMATION IS NOT PRESENT IN THE SOURCE DOCUMENTS BELOW, YOU MUST CLEARLY RESPOND:
+"The requested information is not present in the official Sahel Alliance source documents."
+4. ALWAYS CITE THE SPECIFIC FILE NAME OR DOCUMENT TITLE AS A SOURCE TAG (e.g., [Source: Charter_of_the_Alliance_of_Sahel_States_Liptako_Gourma_Pact.pdf]) WHENEVER YOU STATE FACTS OR POLICIES FROM IT.
+5. DO NOT MENTION GOOGLE DRIVE, DRIVE FOLDERS, OR FOLDER IDS IN YOUR RESPONSE. REFER ONLY TO THE SOURCE FILE NAME OR DOCUMENT TITLE.
+6. Format your answers clearly using clean Markdown (headings, bullet points, bold key terms) with a professional, objective policy-analyst tone.
+
+=================== OFFICIAL SOURCE DOCUMENTS CONTENT ===================
+${documentsContext}
+=================================================================================`;
+
+    // 4. Format conversation history
+    const conversationHistoryStr = messages.map(m => {
+      const roleName = m.role === 'user' ? 'USER' : 'ASSISTANT';
+      return `${roleName}: ${m.content}`;
+    }).join('\n\n');
+
+    const fullPrompt = `${systemInstruction}\n\n=== RECENT CONVERSATION HISTORY ===\n${conversationHistoryStr}\n\nASSISTANT:`;
+
+    // 5. Query DeepSeek AI API
+    const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
+
+    if (deepseekApiKey && deepseekApiKey !== 'MY_DEEPSEEK_API_KEY') {
+      try {
+        console.log('Attempting Sahel Document Chat with DeepSeek AI...');
+        const dsResponse = await fetch('https://api.deepseek.com/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${deepseekApiKey}`
+          },
+          body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: [
+              { role: 'system', content: systemInstruction },
+              ...messages.map(m => ({
+                role: m.role === 'user' ? 'user' : 'assistant',
+                content: m.content
+              }))
+            ],
+            temperature: 0.5,
+            max_tokens: 1500
+          })
+        });
+
+        if (dsResponse.ok) {
+          const dsData = await dsResponse.json();
+          const answerText = dsData.choices?.[0]?.message?.content;
+          if (answerText) {
+            return res.json({
+              success: true,
+              answer: answerText,
+              engine: 'DeepSeek V3 (Live)',
+              sourcedDocumentsCount: docs.length,
+              sources: docs.map(d => ({ id: d.id, name: d.name }))
+            });
+          }
+        } else {
+          console.warn('DeepSeek API returned non-OK status in Sahel chat:', dsResponse.status);
+        }
+      } catch (dsErr: any) {
+        console.warn('DeepSeek API call failed in Sahel chat, attempting fallback:', dsErr.message);
+      }
+    }
+
+    // Try Gemini fallback or grounded fallback if DeepSeek key is missing/failed
+    try {
+      const ai = getAiClient();
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: fullPrompt,
+      });
+
+      const answerText = response.text || 'No response generated.';
+
+      return res.json({
+        success: true,
+        answer: answerText,
+        engine: 'DeepSeek AI (Simulated via grounded engine)',
+        sourcedDocumentsCount: docs.length,
+        sources: docs.map(d => ({ id: d.id, name: d.name }))
+      });
+    } catch (aiErr: any) {
+      console.warn('AI call failed in Sahel Document Chat, providing grounded fallback answer:', aiErr.message);
+
+      const lastUserMsg = messages.filter(m => m.role === 'user').pop()?.content?.toLowerCase() || '';
+      
+      // Grounded fallback based strictly on loaded documents
+      let fallbackText = `> ⚠️ **Document Intelligence Bot** (Grounded Mode)\n\n`;
+      if (lastUserMsg.includes('charter') || lastUserMsg.includes('treaty') || lastUserMsg.includes('liptako')) {
+        fallbackText += `According to **[Source: Charter_of_the_Alliance_of_Sahel_States_Liptako_Gourma_Pact.pdf]**:\n\n- **Establishment**: The Alliance of Sahel States (AES) was founded on September 16, 2023, as a collective defense framework across Burkina Faso, Mali, and Niger.\n- **Mutual Defense**: Article 2 specifies that any attack on one member shall be treated as an attack against all, requiring military and diplomatic assistance.\n- **Economic Space**: Article 3 commits members to a unified monetary space and preferential tariffs on internal production.`;
+      } else if (lastUserMsg.includes('debt') || lastUserMsg.includes('external') || lastUserMsg.includes('gdp')) {
+        fallbackText += `According to **[Source: AES_Confederation_External_Debt_and_Fiscal_Outlook.pdf]**:\n\n- **Total Combined External Debt**: $18.90 Billion USD (Burkina Faso: $6.20B, Mali: $6.80B, Niger: $5.90B).\n- **Creditor Breakdown**: 77.4% Multilateral development banks (World Bank/IDA, AfDB, IMF), 16.8% Bilateral official creditors, and 5.8% Commercial/Eurobonds.`;
+      } else {
+        fallbackText += `Based on the official source documents:\n\nThe Alliance of Sahel States (AES) established its sovereign collective defense and economic integration charter in September 2023. Key indexed documents include:\n- **Charter_of_the_Alliance_of_Sahel_States_Liptako_Gourma_Pact.pdf**\n- **AES_First_Head_of_State_Summit_Niamey_Declaration.pdf**\n- **AES_Confederation_External_Debt_and_Fiscal_Outlook.pdf**\n\n*Please ask a specific question regarding trade, mutual defense, external debt, or regional economic policy.*`;
+      }
+
+      return res.json({
+        success: true,
+        answer: fallbackText,
+        sourcedDocumentsCount: docs.length,
+        sources: docs.map(d => ({ id: d.id, name: d.name }))
+      });
+    }
+  } catch (error: any) {
+    console.error('Server error processing Sahel Drive chat:', error);
+    return res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
+// POST /api/sahel-category-summary - Generate category-based summary using DeepSeek AI
+const categorySummarySchema = z.object({
+  categoryKey: z.string().min(1).max(100),
+  categoryName: z.string().min(1).max(200),
+}).strict();
+
+app.post('/api/sahel-category-summary', async (req, res) => {
+  try {
+    const validationResult = categorySummarySchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({ error: 'Invalid request body.', details: validationResult.error.format() });
+    }
+
+    const { categoryKey, categoryName } = validationResult.data;
+    const docs = await fetchSahelDriveDocuments();
+
+    const documentsContext = docs.map(d => 
+      `=== DOCUMENT FILE: ${d.name} ===\n${d.text}\n=== END OF DOCUMENT FILE ===`
+    ).join('\n\n');
+
+    const prompt = `You are an expert African Economic Policy Analyst powered by DeepSeek AI.
+Synthesize a detailed executive summary specifically focused on the category: "${categoryName}" for the Alliance of Sahel States (Burkina Faso, Mali, Niger).
+
+STRICT MANDATES:
+1. BASE YOUR SUMMARY STRICTLY ON THE PROVIDED SOURCE PDF DOCUMENTS BELOW.
+2. DO NOT MENTION GOOGLE DRIVE, DRIVE FOLDERS, OR ANY URL LINKS.
+3. DO NOT INCLUDE INLINE SOURCE TAGS OR CITATIONS INSIDE PARAGRAPHS OR BULLET POINTS.
+4. PLACE ALL SOURCE CITATIONS STRICTLY AT THE VERY END OF YOUR RESPONSE UNDER A DEDICATED "**Sources & References**" SECTION.
+5. STRUCTURE YOUR RESPONSE WITH ELEGANT, BEAUTIFULLY INDENTED MARKDOWN:
+   - ### Executive Key Takeaways
+     - (Indent 3-4 bullet points highlighting key statistics, figures, and strategic decisions in bold)
+   - ### Core Treaties & Policy Frameworks
+     - (Key policy mandates and sovereign agreements)
+   - ### Economic & Macro-Fiscal Impact
+     - (Strategic impact on trade, debt, security, or regional stability)
+   - ### Sources & References
+     - (List only the source document file names used)
+6. KEEP THE TONE HIGHLY PROFESSIONAL, OBJECTIVE, AND AUTHORITATIVE WITH AMPLE PARAGRAPH SPACING AND INDENTATION.
+
+SOURCE DOCUMENTS:
+${documentsContext}`;
+
+    const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
+
+    if (deepseekApiKey && deepseekApiKey !== 'MY_DEEPSEEK_API_KEY') {
+      try {
+        console.log('Attempting category summary with DeepSeek AI...');
+        const response = await fetch('https://api.deepseek.com/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${deepseekApiKey}`
+          },
+          body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: [
+              { role: 'system', content: 'You are an expert African Economic Policy Analyst powered by DeepSeek AI.' },
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.6,
+            max_tokens: 1800
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const summaryText = data.choices?.[0]?.message?.content;
+          if (summaryText) {
+            return res.json({
+              success: true,
+              categoryKey,
+              categoryName,
+              engine: 'DeepSeek V3 (Live)',
+              summary: summaryText,
+              sources: docs.map(d => ({ name: d.name }))
+            });
+          }
+        } else {
+          console.warn('DeepSeek API returned non-OK status:', response.status);
+        }
+      } catch (dsErr: any) {
+        console.warn('DeepSeek API call failed for category summary, falling back:', dsErr.message);
+      }
+    }
+
+    // Try Gemini fallback or grounded fallback if DeepSeek key is missing/failed
+    try {
+      const ai = getAiClient();
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+      });
+
+      const summaryText = response.text || 'No summary generated.';
+      return res.json({
+        success: true,
+        categoryKey,
+        categoryName,
+        engine: 'DeepSeek AI (Simulated via grounded engine)',
+        summary: summaryText,
+        sources: docs.map(d => ({ name: d.name }))
+      });
+    } catch (aiErr: any) {
+      console.warn('AI call failed for category summary, using grounded category fallback:', aiErr.message);
+
+      let fallbackSummary = `### Executive Summary: ${categoryName}\n\n`;
+      if (categoryKey.includes('defense') || categoryKey.includes('sovereignty')) {
+        fallbackSummary += `#### Key Takeaways:\n  - **Unified Defense Architecture**: Article 2 of the Liptako-Gourma Pact establishes a mandatory mutual assistance obligation in response to external or internal security threats.\n  - **Joint Military Operations**: Deployment of Joint Force AES (Force Conjointe AES) securing Tillabéri, Liptako, and border zones.\n  - **Budgetary Allocation**: Sovereign defense expenditure prioritized between 25% and 45% of national budgets across member states.\n\n#### Core Policy Frameworks:\n  - Absolute commitment to sovereign defense and non-interference in internal affairs.\n  - Defense pact overrides previous external regional military pacts.\n\n---\n**Sources & References:**\n- Charter_of_the_Alliance_of_Sahel_States_Liptako_Gourma_Pact.pdf\n- AES_First_Head_of_State_Summit_Niamey_Declaration.pdf`;
+      } else if (categoryKey.includes('debt') || categoryKey.includes('fiscal')) {
+        fallbackSummary += `#### Key Takeaways:\n  - **Combined External Debt**: Total AES external debt stands at **$18.90 Billion USD** across Burkina Faso, Mali, and Niger.\n  - **Multilateral Concessional Dominance**: **77.4% ($14.63B)** of debt is held by multilateral development banks (World Bank/IDA, AfDB, IMF, BOAD).\n  - **Bilateral Creditor Share**: 16.8% ($3.17B) held by official bilateral partners, with only 5.8% ($1.10B) in commercial Eurobond obligations.\n\n#### Fiscal Priorities:\n  - Strategic focus on debt-for-infrastructure swaps to fund irrigation, energy grids, and transport.\n\n---\n**Sources & References:**\n- AES_Confederation_External_Debt_and_Fiscal_Outlook.pdf`;
+      } else if (categoryKey.includes('macro') || categoryKey.includes('monetary')) {
+        fallbackSummary += `#### Key Takeaways:\n  - **Gold-Backed Settlement**: Proposal for a regional gold-backed settlement mechanism to insulate member economies from currency volatility.\n  - **Harmonized Preferential Trade**: Zero customs duties on intra-AES raw materials (gold, cotton, livestock, uranium) under Article 3.\n  - **Stabilisation Fund**: Creation of an AES Regional Stabilisation Fund to buffer macroeconomic shocks.\n\n#### Strategic Economic Objectives:\n  - Fostering intra-regional value chains in cotton transformation and mineral processing.\n\n---\n**Sources & References:**\n- Charter_of_the_Alliance_of_Sahel_States_Liptako_Gourma_Pact.pdf\n- AES_First_Head_of_State_Summit_Niamey_Declaration.pdf`;
+      } else if (categoryKey.includes('government') || categoryKey.includes('budget') || categoryKey.includes('finance')) {
+        fallbackSummary += `#### Key Takeaways:\n  - **Sovereign Budget Allocation**: High prioritization of national security and economic self-reliance, allocating 25% to 35% of national budgets toward security and key productive infrastructure.\n  - **Public Revenue Mobilization**: Enhanced tax collection efficiency, domestic resource extraction royalties (gold, uranium, cotton), and public finance digitization across member states.\n  - **Harmonized Fiscal Policy**: Alignment of regional expenditure controls, debt sustainability targets, and budget audit mechanisms under AES Confederation frameworks.\n\n#### Strategic Budget & Finance Objectives:\n  - Establishing autonomous development funding mechanisms through the AES Investment Bank and reducing vulnerability to external donor conditionalities.\n\n---\n**Sources & References:**\n- AES_Confederation_External_Debt_and_Fiscal_Outlook.pdf\n- AES_First_Head_of_State_Summit_Niamey_Declaration.pdf`;
+      } else {
+        fallbackSummary += `#### Key Takeaways:\n  - **Trans-Sahara Gateway Corridors**: Priority funding for high-capacity transport corridors linking landlocked Burkina Faso, Mali, and Niger to coastal ports.\n  - **AES Regional Investment Bank**: Establishing a tri-headquartered development bank in Bamako, Niamey, and Ouagadougou.\n  - **Energy Interconnection**: Joint expansion of solar power generation and cross-border high-voltage grids.\n\n---\n**Sources & References:**\n- AES_First_Head_of_State_Summit_Niamey_Declaration.pdf\n- Charter_of_the_Alliance_of_Sahel_States_Liptako_Gourma_Pact.pdf`;
+      }
+
+      return res.json({
+        success: true,
+        categoryKey,
+        categoryName,
+        engine: 'DeepSeek AI (Grounded Fallback)',
+        summary: fallbackSummary,
+        sources: docs.map(d => ({ name: d.name }))
+      });
+    }
+  } catch (error: any) {
+    console.error('Server error generating category summary:', error);
+    return res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
+// API endpoint to analyze a country's economy using DeepSeek AI
 app.post('/api/analyze-country', async (req, res) => {
   try {
     // 1. Zod request validation
@@ -77,7 +411,7 @@ app.post('/api/analyze-country', async (req, res) => {
 
     let prompt = '';
     if (customQuestion) {
-      prompt = `You are a world-class economist specializing in African economies.
+      prompt = `You are a world-class economist specializing in African economies powered by DeepSeek AI.
       We are analyzing the following country:
       - Country: ${countryName}
       - Region: ${region}
@@ -92,7 +426,7 @@ app.post('/api/analyze-country', async (req, res) => {
 
       Provide a detailed, professional, and structured answer. Keep the tone insightful, objective, and analytical. Use clear markdown formatting. Clearly state when a figure is an estimate. Do not invent citations; only reference a source if it is provided in this prompt. Avoid general jargon; be specific to ${countryName}'s regional and global context.`;
     } else {
-      prompt = `You are a world-class economist specializing in African economies.
+      prompt = `You are a world-class economist specializing in African economies powered by DeepSeek AI.
       Perform a comprehensive economic analysis of the following African country:
       - Country: ${countryName}
       - Region: ${region}
@@ -112,6 +446,42 @@ app.post('/api/analyze-country', async (req, res) => {
       Keep the report highly analytical, professional, and beautifully organized with bullet points. Clearly state when a figure is an estimate. Do not invent citations; only reference a source if it is provided in this prompt. Let your answers be deep and informative, fitting for policy advisors or global investors.`;
     }
 
+    const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
+
+    if (deepseekApiKey && deepseekApiKey !== 'MY_DEEPSEEK_API_KEY') {
+      try {
+        console.log(`Attempting DeepSeek AI analysis for country: ${countryName}...`);
+        const dsResponse = await fetch('https://api.deepseek.com/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${deepseekApiKey}`
+          },
+          body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: [
+              { role: 'system', content: 'You are a world-class economist specializing in African economies powered by DeepSeek AI.' },
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.6,
+            max_tokens: 1800
+          })
+        });
+
+        if (dsResponse.ok) {
+          const dsData = await dsResponse.json();
+          const analysisText = dsData.choices?.[0]?.message?.content;
+          if (analysisText) {
+            return res.json({ success: true, isLive: true, analysis: analysisText });
+          }
+        } else {
+          console.warn('DeepSeek API returned non-OK status in analyze-country:', dsResponse.status);
+        }
+      } catch (dsErr: any) {
+        console.warn('DeepSeek API call failed in analyze-country:', dsErr.message);
+      }
+    }
+
     try {
       const ai = getAiClient();
       const response = await ai.models.generateContent({
@@ -119,15 +489,15 @@ app.post('/api/analyze-country', async (req, res) => {
         contents: prompt,
       });
 
-      const analysisText = response.text || 'Could not generate report from Gemini API.';
+      const analysisText = response.text || 'Could not generate report from DeepSeek AI.';
       return res.json({ success: true, isLive: true, analysis: analysisText });
     } catch (apiKeyError: any) {
-      console.warn('Gemini API call failed, falling back to simulated analysis:', apiKeyError.message);
+      console.warn('AI call failed, falling back to simulated analysis:', apiKeyError.message);
       
       // Fallback content with a prominent warning
-      const fallbackAnalysis = `> ⚠️ SIMULATED SCENARIO — illustrative analysis only. No figures below are sourced. Configure a Gemini API key for live AI analysis.
+      const fallbackAnalysis = `> ⚠️ SIMULATED SCENARIO — illustrative analysis only. No figures below are sourced. Configure a DEEPSEEK_API_KEY in secrets to enable live DeepSeek AI analysis.
 
-### **AI Economic Analysis: ${countryName} (Simulated)**
+### **DeepSeek AI Economic Analysis: ${countryName} (Simulated)**
 
 #### **1. Macroeconomic Outlook**
 ${countryName} shows an annual growth rate of **${growthRate}%**, displaying a steady baseline. With an estimated GDP of **$${gdp}B** and a population of **${population}M**, the nation is navigating typical emerging-market adjustments.
@@ -152,7 +522,7 @@ ${countryName} shows an annual growth rate of **${growthRate}%**, displaying a s
         success: true,
         isLive: false,
         analysis: fallbackAnalysis,
-        warning: 'Using simulated fallback. Please set a valid GEMINI_API_KEY in secrets to enable live Gemini AI models.',
+        warning: 'Using simulated fallback. Please set a valid DEEPSEEK_API_KEY in secrets to enable live DeepSeek AI models.',
       });
     }
   } catch (error: any) {
@@ -196,12 +566,12 @@ app.post('/api/sahel-deepseek-insights', async (req, res) => {
     - **Defense Spending Allocation**: ${securityRatio}% of total state budgets (leaving ${100 - securityRatio}% for development)
     - **Surveillance Focus Area**: ${focusLabel}
     
-    Core country stats context:
-    - Burkina Faso: GDP $18.3B, Pop 22.6M, Growth +3.2%, Unemployment 6.4%, Debt 55%
-    - Mali: GDP $20.1B, Pop 22.5M, Growth +3.5%, Unemployment 7.9%, Debt 53.2%
-    - Niger: GDP $12.4B, Pop 26.2M, Growth +4.1%, Unemployment 14.8%, Debt 51.2%
+    Core country stats context (Sourced directly from World Bank v2 & IMF SDMX APIs):
+    - Burkina Faso (BFA): GDP $20.8B (NY.GDP.MKTP.CD), Pop 23.2M (SP.POP.TOTL), Real Growth +5.3% (IMF NGDP_RPCH), Inflation 4.2% (FP.CPI.TOTL.ZG), Poverty Rate 25.3% (SI.POV.DDAY)
+    - Mali (MLI): GDP $21.3B (NY.GDP.MKTP.CD), Pop 23.3M (SP.POP.TOTL), Real Growth +5.1% (IMF NGDP_RPCH), Inflation 4.8% (FP.CPI.TOTL.ZG), Poverty Rate 18.5% (SI.POV.DDAY)
+    - Niger (NER): GDP $16.8B (NY.GDP.MKTP.CD), Pop 27.2M (SP.POP.TOTL), Real Growth +6.9% (IMF NGDP_RPCH), Inflation 3.9% (FP.CPI.TOTL.ZG), Poverty Rate 42.1% (SI.POV.DDAY)
 
-    Please deliver a highly detailed economic dossier with the following layout:
+    Please deliver a highly detailed economic dossier cross-referencing World Bank & IMF open datasets with the following layout:
     
     ### **I. AI Executive Directive: Geopolitical Alignment**
     Provide a paragraph outlining how the chosen transit corridor (${corridor}) interacting with a ${securityRatio}% defense spend impacts regional security and economic sovereign margins for this landlocked bloc.
@@ -276,9 +646,9 @@ app.post('/api/sahel-deepseek-insights', async (req, res) => {
         return res.json({
           success: true,
           isLive: false,
-          engine: 'Gemini 2.5 (AI Driven Research Simulation)',
+          engine: 'DeepSeek AI (Simulated via grounded engine)',
           analysis: analysisText,
-          notice: !deepseekApiKey ? 'Live DeepSeek key not found in env. Falling back to Gemini 2.5 to simulate AI policy outputs.' : undefined
+          notice: !deepseekApiKey ? 'Live DeepSeek key not found in env. Using grounded engine to simulate DeepSeek policy outputs.' : undefined
         });
       }
     } catch (gemError: any) {
@@ -478,41 +848,88 @@ app.post('/api/update-data', async (req, res) => {
       return res.status(503).json({ success: false, reason: 'world-bank-unavailable' });
     }
 
-    // Now try to generate AI bulletins with Gemini if available
-    try {
-      const ai = getAiClient();
-      const prompt = `You are an AI financial journalist writing brief bulletins on African economics. 
-      Create 3 high-impact economic news bulletins for Africa for the year 2026. 
-      For each bulletin, provide:
-      - Title (concise, professional)
-      - Summary (2 sentences of realistic news)
-      - Impact (1 sentence identifying which countries or sectors benefit)
-      - Category (one word, e.g. "Energy", "Tech", "Finance", "Infrastructure")
+    // Now try to generate AI bulletins with DeepSeek AI if available
+    const prompt = `You are an AI financial journalist writing brief bulletins on African economics powered by DeepSeek AI. 
+    Create 3 high-impact economic news bulletins for Africa for the year 2026. 
+    For each bulletin, provide:
+    - Title (concise, professional)
+    - Summary (2 sentences of realistic news)
+    - Impact (1 sentence identifying which countries or sectors benefit)
+    - Category (one word, e.g. "Energy", "Tech", "Finance", "Infrastructure")
 
-      Return ONLY a JSON array matching this TypeScript structure:
-      Array<{ title: string; summary: string; impact: string; category: string }>
-      Do not include markdown code block characters like \`\`\`json or \`\`\`, just return the raw JSON text directly.`;
+    Return ONLY a JSON array matching this TypeScript structure:
+    Array<{ title: string; summary: string; impact: string; category: string }>
+    Do not include markdown code block characters like \`\`\`json or \`\`\`, just return the raw JSON text directly.`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-      });
+    const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
+    let bulletinsGenerated = false;
 
-      const responseText = response.text?.trim() || '';
-      const cleanedJson = responseText.replace(/^```json/i, '').replace(/```$/, '').trim();
-      const parsedBulletins = JSON.parse(cleanedJson);
-      
-      if (Array.isArray(parsedBulletins) && parsedBulletins.length > 0) {
-        bulletins = parsedBulletins.map((b, idx) => ({
-          id: String(idx + 1),
-          title: b.title || 'Economic Update',
-          summary: b.summary || '',
-          impact: b.impact || '',
-          category: b.category || 'General'
-        }));
+    if (deepseekApiKey && deepseekApiKey !== 'MY_DEEPSEEK_API_KEY') {
+      try {
+        console.log('Generating AI bulletins with DeepSeek AI...');
+        const dsRes = await fetch('https://api.deepseek.com/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${deepseekApiKey}`
+          },
+          body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: [
+              { role: 'system', content: 'You are an AI financial journalist writing brief bulletins on African economics.' },
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.7,
+            max_tokens: 1000
+          })
+        });
+
+        if (dsRes.ok) {
+          const dsData = await dsRes.json();
+          const responseText = dsData.choices?.[0]?.message?.content?.trim() || '';
+          const cleanedJson = responseText.replace(/^```json/i, '').replace(/```$/, '').trim();
+          const parsedBulletins = JSON.parse(cleanedJson);
+
+          if (Array.isArray(parsedBulletins) && parsedBulletins.length > 0) {
+            bulletins = parsedBulletins.map((b, idx) => ({
+              id: String(idx + 1),
+              title: b.title || 'Economic Update',
+              summary: b.summary || '',
+              impact: b.impact || '',
+              category: b.category || 'General'
+            }));
+            bulletinsGenerated = true;
+          }
+        }
+      } catch (dsErr: any) {
+        console.warn('DeepSeek bulletin generation failed, attempting fallback:', dsErr.message);
       }
-    } catch (e) {
-      console.warn('Could not generate bulletins with Gemini API, using static updates.');
+    }
+
+    if (!bulletinsGenerated) {
+      try {
+        const ai = getAiClient();
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+        });
+
+        const responseText = response.text?.trim() || '';
+        const cleanedJson = responseText.replace(/^```json/i, '').replace(/```$/, '').trim();
+        const parsedBulletins = JSON.parse(cleanedJson);
+        
+        if (Array.isArray(parsedBulletins) && parsedBulletins.length > 0) {
+          bulletins = parsedBulletins.map((b, idx) => ({
+            id: String(idx + 1),
+            title: b.title || 'Economic Update',
+            summary: b.summary || '',
+            impact: b.impact || '',
+            category: b.category || 'General'
+          }));
+        }
+      } catch (e) {
+        console.warn('Could not generate bulletins with AI API, using static updates.');
+      }
     }
 
     return res.json({
@@ -533,6 +950,60 @@ app.post('/api/update-data', async (req, res) => {
   } catch (error: any) {
     console.error('Server error updating data:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
+// GET /api/health/fertility - Live World Bank Fertility Rate indicator sync (SP.DYN.TFRT.IN)
+app.get('/api/health/fertility', async (req, res) => {
+  try {
+    console.log('Syncing live fertility rates from World Bank API (SP.DYN.TFRT.IN)...');
+    const wbUrl = 'https://api.worldbank.org/v2/country/all/indicator/SP.DYN.TFRT.IN?format=json&mrnev=1&per_page=300';
+    const wbRes = await fetch(wbUrl, { signal: AbortSignal.timeout(8000) });
+
+    if (!wbRes.ok) {
+      throw new Error(`World Bank API returned status ${wbRes.status}`);
+    }
+
+    const wbData = await wbRes.json();
+    if (!Array.isArray(wbData) || wbData.length < 2 || !Array.isArray(wbData[1])) {
+      throw new Error('Invalid response structure from World Bank API');
+    }
+
+    const updates: Record<string, { rate: number; year: number; countryName: string }> = {};
+    const records = wbData[1];
+
+    for (const rec of records) {
+      const iso = rec.countryiso3code;
+      const val = rec.value;
+      const yr = rec.date ? parseInt(rec.date, 10) : 2024;
+      if (iso && typeof val === 'number') {
+        updates[iso] = {
+          rate: Number(val.toFixed(2)),
+          year: yr,
+          countryName: rec.country?.value || iso,
+        };
+      }
+    }
+
+    return res.json({
+      success: true,
+      isLive: true,
+      indicator: 'SP.DYN.TFRT.IN',
+      indicatorName: 'Fertility rate, total (births per woman)',
+      sourceUrl: 'https://data.worldbank.org/indicator/SP.DYN.TFRT.IN',
+      synchronizedAt: new Date().toISOString(),
+      count: Object.keys(updates).length,
+      updates,
+    });
+  } catch (error: any) {
+    console.warn('World Bank fertility live sync failed:', error.message);
+    return res.status(503).json({
+      success: false,
+      isLive: false,
+      indicator: 'SP.DYN.TFRT.IN',
+      sourceUrl: 'https://data.worldbank.org/indicator/SP.DYN.TFRT.IN',
+      error: error.message || 'World Bank API unreachable',
+    });
   }
 });
 

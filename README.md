@@ -12,11 +12,11 @@ The application is structured into four main views:
 ## Environment Variables & Configuration
 The Express backend loads variables from `.env` (note: the server loads `.env`, not `.env.local`).
 - `PORT`: Network ingress port (defaults to `3000`).
-- `GEMINI_API_KEY`: For live Gemini-powered country economic analyses and news generation.
-- `DEEPSEEK_API_KEY`: For live DeepSeek V3-powered Sahel Alliance policy projection modeling.
+- `DEEPSEEK_API_KEY`: Primary engine for live DeepSeek AI-powered macroeconomic analyses, policy insights, and Sahel Alliance intelligence.
+- `GEMINI_API_KEY`: Optional fallback engine.
 
 ## Simulated vs. Live AI Modes
-- **Live Mode**: If valid API keys are configured, the platform communicates directly with official Google Gemini and DeepSeek endpoints for real-time synthesis.
+- **Live Mode**: If valid API keys are configured, the platform communicates directly with official DeepSeek AI endpoints for real-time synthesis.
 - **Simulated Scenario Mode**: If keys are absent, the platform fails safely and operates in high-fidelity simulated mode, producing clean, realistic, and objective qualitative policy evaluations.
 
 ## Data Provenance Policy

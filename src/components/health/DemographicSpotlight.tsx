@@ -3,6 +3,7 @@ import {
   CountryFertilityRecord,
   AFRICAN_FERTILITY_DATA,
 } from '../../data/healthFertilityData';
+import { WORLD_BANK_DATA_DATE } from '../../constants/dataSource';
 import {
   Users,
   GraduationCap,
@@ -40,7 +41,7 @@ export const DemographicSpotlight: React.FC<DemographicSpotlightProps> = ({
             Sovereign Spotlight: {country.flag} {country.name} ({country.iso3})
           </h3>
           <p className="text-xs text-slate-500 mt-1">
-            Structural health economics, dependency ratio impacts, and human capital accumulation based on World Bank indicator SP.DYN.TFRT.IN.
+            Structural health economics, dependency ratio impacts, and human capital accumulation based on World Bank indicator SP.DYN.TFRT.IN (Data Source Date: {WORLD_BANK_DATA_DATE}).
           </p>
         </div>
 

@@ -39,12 +39,23 @@ export interface ExternalDebtItem {
   institution: string;
   amountUSD: number;
   terms: string;
-  category: 'Multilateral' | 'Bilateral' | 'Regional' | 'Commercial';
+  category: 'Multilateral' | 'Bilateral' | 'Regional' | 'Commercial' | 'Regional & Multilateral' | 'Bilateral (Paris Club)' | 'Bilateral (Non-Paris Club)';
   source: string;
   asOfDate: string;
   qoqChangePct: number;
   yoyChangePct: number;
   trendData10Yr: number[]; // 2015 to 2024
+}
+
+export interface DebtRiskProfile {
+  averageInterestRate: string;
+  interestType: string;
+  averageTimeToMaturity: string;
+  maturingWithin1YrPct: string;
+  retrocededDebtFCFA: string;
+  retrocededDebtUSD: string;
+  retrocededDebtSharePct: string;
+  retrocededBeneficiaries: Array<{ name: string; sharePct: number; description?: string }>;
 }
 
 export interface CountryDebtProfile {
@@ -53,6 +64,7 @@ export interface CountryDebtProfile {
   flag: string;
   code: string;
   totalExternalDebtUSD: number;
+  totalExternalDebtFCFA?: string;
   asOfDate: string;
   qoqChangePct: number;
   yoyChangePct: number;
@@ -61,6 +73,7 @@ export interface CountryDebtProfile {
   publicationReference: string;
   sourceNote: string;
   items: ExternalDebtItem[];
+  riskProfile?: DebtRiskProfile;
 }
 
 export const SAHEL_DEBT_DATA: Record<string, CountryDebtProfile> = {
@@ -189,58 +202,96 @@ export const SAHEL_DEBT_DATA: Record<string, CountryDebtProfile> = {
     countryName: 'Niger',
     flag: '🇳🇪',
     code: 'NER',
-    totalExternalDebtUSD: 5_900_000_000,
-    asOfDate: 'Q4 2024 (Dec 31, 2024)',
-    qoqChangePct: 1.7,
-    yoyChangePct: 5.4,
-    trendData10Yr: [2.9, 3.5, 4.1, 4.8, 5.6, 5.9],
-    primarySource: 'Ministry of Economy & Finance (Direction de la Dette Publique Niger) & World Bank',
-    publicationReference: 'Rapport d’Analyse de la Viabilité de la Dette (DDP Niger) / World Bank IDS 2024',
-    sourceNote: 'Niger Ministry of Economy and Finance / World Bank International Debt Statistics FY2024',
+    totalExternalDebtUSD: 5_234_000_000,
+    totalExternalDebtFCFA: '3,140.40 Billion FCFA',
+    asOfDate: 'Q4 2025 (Official Niger DDP / MoF)',
+    qoqChangePct: 1.2,
+    yoyChangePct: 4.8,
+    trendData10Yr: [2.9, 3.5, 4.1, 4.8, 5.2, 5.23],
+    primarySource: "Ministère de l'Economie et des Finances, Direction de la Dette Publique (DDP Niger)",
+    publicationReference: "Rapport d’Analyse de la Dette Extérieure Q4 2025 & Budget citoyen 2026 (Direction Générale du Budget)",
+    sourceNote: "Niger Ministry of Economy and Finance (DDP & DGB) - Official Q4 2025 Debt Ledger & FY2026 Citizen Budget",
+    riskProfile: {
+      averageInterestRate: '1.4% (weighted average)',
+      interestType: '100.0% fixed-rate loans (strictly insulated from monetary policy shocks)',
+      averageTimeToMaturity: '11.1 years (ATM)',
+      maturingWithin1YrPct: '7.7% maturing within one year (low refinancing risk)',
+      retrocededDebtFCFA: '347.09 Billion FCFA',
+      retrocededDebtUSD: '$578 Million',
+      retrocededDebtSharePct: '10.9% of external debt portfolio',
+      retrocededBeneficiaries: [
+        { name: 'NIGELEC (Société Nigérienne d’Electricité)', sharePct: 44.1, description: 'National electric utility infrastructure and transmission projects' },
+        { name: 'SPEN (Société de Patrimoine des Eaux du Niger)', sharePct: 32.6, description: 'Urban drinking water production & pipeline infrastructure' },
+        { name: 'SONIBANK (Société Nigérienne de Banque)', sharePct: 13.8, description: 'State-backed commercial banking & economic refinancing' },
+        { name: 'NIGER TELECOMS', sharePct: 9.5, description: 'National telecommunications fiber and connectivity assets' }
+      ]
+    },
     items: [
       {
         institution: 'World Bank (International Development Association - IDA)',
-        amountUSD: 2_780_000_000,
-        terms: 'Concessional IDA Credits: 0.75% fixed rate, 38-year maturity, 6-year grace period',
+        amountUSD: 2_370_833_333,
+        terms: 'Concessional IDA Credits: 0.75% fixed rate, 38-year maturity, 6-year grace period. Largest sovereign creditor (45.3% of external portfolio; 1,422.50 Billion FCFA).',
         category: 'Multilateral',
-        source: 'World Bank Statement of Active Credits & Grants - Republic of Niger',
-        asOfDate: 'Dec 2024',
+        source: 'Ministère de l’Economie et des Finances Niger (DDP Q4 2025)',
+        asOfDate: 'Q4 2025',
+        qoqChangePct: 1.1,
+        yoyChangePct: 4.2,
+        trendData10Yr: [1.1, 1.4, 1.7, 2.05, 2.25, 2.37]
+      },
+      {
+        institution: 'African Development Bank (AfDB / FAD)',
+        amountUSD: 646_033_333,
+        terms: 'Concessional FAD Window: 0.75% service fee, 30-year maturity, 5-year grace period. 12.4% share of external debt (387.62 Billion FCFA).',
+        category: 'Multilateral',
+        source: 'Ministère de l’Economie et des Finances Niger (DDP Q4 2025)',
+        asOfDate: 'Q4 2025',
+        qoqChangePct: 1.2,
+        yoyChangePct: 3.8,
+        trendData10Yr: [0.38, 0.46, 0.53, 0.59, 0.62, 0.65]
+      },
+      {
+        institution: 'International Monetary Fund (IMF)',
+        amountUSD: 565_233_333,
+        terms: 'Extended Credit Facility (ECF) & Resilience and Sustainability Facility (RSF). 10.8% share of external debt (339.14 Billion FCFA).',
+        category: 'Multilateral',
+        source: 'Ministère de l’Economie et des Finances Niger (DDP Q4 2025)',
+        asOfDate: 'Q4 2025',
+        qoqChangePct: 0.8,
+        yoyChangePct: 2.9,
+        trendData10Yr: [0.25, 0.32, 0.40, 0.48, 0.54, 0.57]
+      },
+      {
+        institution: 'Regional & Other Multilaterals (BOAD, IsDB, IFAD, BADEA, OFID, EIB, EBID)',
+        amountUSD: 1_005_033_333,
+        terms: 'Consolidated regional development lenders: BOAD (294.38B FCFA / 9.4%), IsDB (125.10B / 4.0%), IFAD (88.73B / 2.8%), BADEA (40.61B / 1.3%), OFID (22.35B / 0.7%), EIB (19.24B / 0.6%), EBID (12.61B / 0.4%). Combined 19.2% of external portfolio (603.02 Billion FCFA).',
+        category: 'Regional & Multilateral',
+        source: 'Ministère de l’Economie et des Finances Niger (DDP Q4 2025)',
+        asOfDate: 'Q4 2025',
         qoqChangePct: 1.5,
-        yoyChangePct: 4.5,
-        trendData10Yr: [1.2, 1.5, 1.8, 2.2, 2.62, 2.78]
+        yoyChangePct: 4.6,
+        trendData10Yr: [0.55, 0.68, 0.79, 0.89, 0.96, 1.01]
       },
       {
-        institution: 'African Development Bank (AfDB / ADF)',
-        amountUSD: 1_150_000_000,
-        terms: 'Concessional ADF Window: 0.75% service fee, 30-year maturity, 5-year grace period',
-        category: 'Multilateral',
-        source: 'AfDB Sovereign Operations Report - Niger Portfolio Summary',
-        asOfDate: 'Q4 2024',
-        qoqChangePct: 1.3,
-        yoyChangePct: 3.6,
-        trendData10Yr: [0.55, 0.7, 0.82, 0.96, 1.09, 1.15]
+        institution: 'Paris Club & European Sovereign Partners (France / AFD, Belgium)',
+        amountUSD: 214_033_333,
+        terms: 'Bilateral sovereign development loans: France / AFD (112.23 Billion FCFA / 3.6%), Belgium (16.19 Billion FCFA / 0.5%). Paris Club constitutes 4.1% of external portfolio (128.42 Billion FCFA).',
+        category: 'Bilateral (Paris Club)',
+        source: 'Ministère de l’Economie et des Finances Niger (DDP Q4 2025)',
+        asOfDate: 'Q4 2025',
+        qoqChangePct: -0.4,
+        yoyChangePct: 1.2,
+        trendData10Yr: [0.28, 0.26, 0.24, 0.23, 0.22, 0.21]
       },
       {
-        institution: 'Islamic Development Bank (IsDB) & West African Development Bank (BOAD)',
-        amountUSD: 890_000_000,
-        terms: 'Islamic Development & Regional Facility: 1.50% - 2.50% mark-up rate, 20-year maturity',
-        category: 'Regional',
-        source: 'BOAD & IsDB Joint Regional Infrastructure Debt Ledger',
-        asOfDate: 'Q3 2024',
-        qoqChangePct: 2.3,
-        yoyChangePct: 6.1,
-        trendData10Yr: [0.4, 0.52, 0.63, 0.74, 0.83, 0.89]
-      },
-      {
-        institution: 'Bilateral Sovereign Creditors (China Exim, France, Exim Bank India)',
-        amountUSD: 1_080_000_000,
-        terms: 'Concessional Export Credit & Sovereign Facility: 1.25% - 3.00% interest, 15–25 year maturity',
-        category: 'Bilateral',
-        source: 'Direction Générale du Trésor du Niger - Service de la Dette Extérieure',
-        asOfDate: 'Dec 2024',
-        qoqChangePct: 1.9,
-        yoyChangePct: 5.3,
-        trendData10Yr: [0.75, 0.82, 0.89, 0.95, 1.02, 1.08]
+        institution: 'Non-Paris Club Bilateral Creditors (China, Saudi, India, Kuwait, Congo, Libya, etc.)',
+        amountUSD: 350_750_000,
+        terms: 'Concessional bilateral sovereign credit: China (77.36B FCFA / 2.5%), Saudi Fund (32.52B / 1.0%), India (32.29B / 1.0%), Kuwait Fund (27.53B / 0.9%), Congo (25.00B / 0.8%), Libya (8.49B / 0.3%), Taiwan (4.40B), Iraq (2.15B), UAE (0.92B). Total 6.7% of external portfolio (210.66 Billion FCFA).',
+        category: 'Bilateral (Non-Paris Club)',
+        source: 'Ministère de l’Economie et des Finances Niger (DDP Q4 2025)',
+        asOfDate: 'Q4 2025',
+        qoqChangePct: 1.8,
+        yoyChangePct: 4.9,
+        trendData10Yr: [0.18, 0.22, 0.26, 0.30, 0.33, 0.35]
       }
     ]
   }
@@ -278,37 +329,37 @@ const COMPARISON_CATEGORIES = [
     key: 'worldbank',
     label: 'World Bank (IDA Concessional Credits)',
     category: 'Multilateral',
-    amounts: { 'burkina-faso': 2_850_000_000, 'mali': 3_120_000_000, 'niger': 2_780_000_000 },
-    qoqChanges: { 'burkina-faso': 1.8, 'mali': 1.6, 'niger': 1.5 },
-    totalQoqPct: 1.6,
-    trendData10Yr: [4.0, 4.9, 5.9, 7.1, 8.27, 8.75]
+    amounts: { 'burkina-faso': 2_850_000_000, 'mali': 3_120_000_000, 'niger': 2_370_833_333 },
+    qoqChanges: { 'burkina-faso': 1.8, 'mali': 1.6, 'niger': 1.1 },
+    totalQoqPct: 1.5,
+    trendData10Yr: [4.0, 4.9, 5.9, 7.1, 8.27, 8.34]
   },
   {
     key: 'afdb',
     label: 'African Development Bank (AfDB / ADF)',
     category: 'Multilateral',
-    amounts: { 'burkina-faso': 1_240_000_000, 'mali': 1_360_000_000, 'niger': 1_150_000_000 },
-    qoqChanges: { 'burkina-faso': 1.2, 'mali': 1.1, 'niger': 1.3 },
+    amounts: { 'burkina-faso': 1_240_000_000, 'mali': 1_360_000_000, 'niger': 646_033_333 },
+    qoqChanges: { 'burkina-faso': 1.2, 'mali': 1.1, 'niger': 1.2 },
     totalQoqPct: 1.2,
-    trendData10Yr: [1.85, 2.3, 2.72, 3.16, 3.56, 3.75]
+    trendData10Yr: [1.85, 2.3, 2.72, 3.16, 3.56, 3.25]
   },
   {
     key: 'imf',
-    label: 'IMF & SDR Facilities / Regional BOAD',
+    label: 'IMF, SDR Facilities & Regional Multilaterals (BOAD, IsDB)',
     category: 'Multilateral / Regional',
-    amounts: { 'burkina-faso': 680_000_000, 'mali': 750_000_000, 'niger': 890_000_000 },
-    qoqChanges: { 'burkina-faso': 0.9, 'mali': 1.4, 'niger': 2.3 },
-    totalQoqPct: 1.6,
-    trendData10Yr: [1.15, 1.42, 1.7, 1.96, 2.19, 2.32]
+    amounts: { 'burkina-faso': 680_000_000, 'mali': 750_000_000, 'niger': 1_570_266_667 },
+    qoqChanges: { 'burkina-faso': 0.9, 'mali': 1.4, 'niger': 1.3 },
+    totalQoqPct: 1.2,
+    trendData10Yr: [1.15, 1.42, 1.7, 1.96, 2.19, 3.00]
   },
   {
     key: 'bilateral',
-    label: 'Bilateral & Export Creditors (China, Paris Club, Saudi/IsDB)',
+    label: 'Bilateral & Sovereign Creditors (Paris Club, China, Saudi, India)',
     category: 'Bilateral',
-    amounts: { 'burkina-faso': 1_430_000_000, 'mali': 1_570_000_000, 'niger': 1_080_000_000 },
-    qoqChanges: { 'burkina-faso': 2.1, 'mali': 1.9, 'niger': 1.9 },
-    totalQoqPct: 2.0,
-    trendData10Yr: [2.5, 2.92, 3.32, 3.63, 3.9, 4.08]
+    amounts: { 'burkina-faso': 1_430_000_000, 'mali': 1_570_000_000, 'niger': 564_783_333 },
+    qoqChanges: { 'burkina-faso': 2.1, 'mali': 1.9, 'niger': 1.0 },
+    totalQoqPct: 1.7,
+    trendData10Yr: [2.5, 2.92, 3.32, 3.63, 3.9, 3.56]
   }
 ];
 
@@ -389,8 +440,8 @@ export const HISTORICAL_DEBT_10YR_DATA = [
   { year: '2020', BFA: 4.85, MLI: 5.35, NER: 4.45, TotalAES: 14.65 },
   { year: '2021', BFA: 5.20, MLI: 5.80, NER: 4.80, TotalAES: 15.80 },
   { year: '2022', BFA: 5.55, MLI: 6.15, NER: 5.20, TotalAES: 16.90 },
-  { year: '2023', BFA: 5.90, MLI: 6.50, NER: 5.60, TotalAES: 18.00 },
-  { year: '2024', BFA: 6.20, MLI: 6.80, NER: 5.90, TotalAES: 18.90 },
+  { year: '2023', BFA: 5.90, MLI: 6.50, NER: 5.20, TotalAES: 17.60 },
+  { year: '2024', BFA: 6.20, MLI: 6.80, NER: 5.23, TotalAES: 18.23 },
 ];
 
 interface DebtBarChartProps {
@@ -1076,6 +1127,90 @@ export default function ExternalDebtDetails({ countries = [] }: ExternalDebtDeta
                       </tfoot>
                     </table>
                   </div>
+
+                  {/* COST, MATURITY & RETROCEDED DEBT PANEL */}
+                  {profile.riskProfile && (
+                    <div className="space-y-4 pt-1">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* 1. Cost, Maturity & Refinancing Profile */}
+                        <div className="rounded-2xl border border-brand-border/60 bg-white/90 p-4 space-y-3 shadow-2xs">
+                          <div className="flex items-center gap-2 pb-2 border-b border-brand-border/40">
+                            <Clock className="w-4 h-4 text-amber-700 shrink-0" />
+                            <h5 className="text-xs font-bold font-mono uppercase tracking-wider text-brand-text">
+                              Cost, Maturity & Interest Insulation Profile
+                            </h5>
+                          </div>
+                          <div className="space-y-2.5 text-xs font-mono">
+                            <div className="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-brand-border/30">
+                              <span className="text-brand-dim">Weighted Average Interest Rate:</span>
+                              <span className="font-bold text-emerald-800">{profile.riskProfile.averageInterestRate}</span>
+                            </div>
+                            <div className="bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-200/60 text-emerald-950">
+                              <div className="flex items-center gap-1.5 font-bold text-[11px] uppercase tracking-wide">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                                <span>Interest Rate Structure:</span>
+                              </div>
+                              <p className="text-[11px] font-sans text-emerald-900 mt-1 leading-normal">
+                                {profile.riskProfile.interestType}
+                              </p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="bg-slate-50 p-2 rounded-xl border border-brand-border/30">
+                                <span className="text-[10px] text-brand-dim uppercase block">Average Maturity (ATM)</span>
+                                <span className="font-bold text-brand-text text-sm mt-0.5 block">{profile.riskProfile.averageTimeToMaturity}</span>
+                              </div>
+                              <div className="bg-slate-50 p-2 rounded-xl border border-brand-border/30">
+                                <span className="text-[10px] text-brand-dim uppercase block">Refinancing Risk (1-Yr)</span>
+                                <span className="font-bold text-amber-800 text-sm mt-0.5 block">{profile.riskProfile.maturingWithin1YrPct}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 2. Retroceded Debt / SOE Contingent Liabilities */}
+                        <div className="rounded-2xl border border-brand-border/60 bg-white/90 p-4 space-y-3 shadow-2xs">
+                          <div className="flex items-center justify-between pb-2 border-b border-brand-border/40">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="w-4 h-4 text-amber-700 shrink-0" />
+                              <h5 className="text-xs font-bold font-mono uppercase tracking-wider text-brand-text">
+                                Retroceded Debt (Dette Rétrocédée aux SOEs)
+                              </h5>
+                            </div>
+                            <span className="text-[10px] font-mono font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-200">
+                              {profile.riskProfile.retrocededDebtSharePct}
+                            </span>
+                          </div>
+                          <div className="space-y-2 text-xs">
+                            <div className="flex justify-between items-baseline bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/20 font-mono">
+                              <span className="text-amber-950 font-medium">Total On-Lent to SOEs:</span>
+                              <div className="text-right">
+                                <span className="font-bold text-amber-950 text-sm">{profile.riskProfile.retrocededDebtFCFA}</span>
+                                <span className="text-[10px] text-brand-muted block">({profile.riskProfile.retrocededDebtUSD})</span>
+                              </div>
+                            </div>
+                            <div className="space-y-1.5 pt-1">
+                              <span className="text-[10px] font-mono uppercase text-brand-dim font-bold block">
+                                Beneficiary State-Owned Enterprises:
+                              </span>
+                              <div className="grid grid-cols-2 gap-2 font-mono text-[11px]">
+                                {profile.riskProfile.retrocededBeneficiaries.map((b) => (
+                                  <div key={b.name} className="bg-slate-50 p-2 rounded-xl border border-brand-border/30 space-y-0.5">
+                                    <div className="flex justify-between items-center">
+                                      <span className="font-bold text-brand-text truncate">{b.name.split(' ')[0]}</span>
+                                      <span className="text-amber-800 font-bold">{b.sharePct}%</span>
+                                    </div>
+                                    <span className="text-[9px] text-brand-muted font-sans line-clamp-1 block" title={b.description}>
+                                      {b.description}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* CITATION & SOURCE NOTE FOOTER */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] text-brand-dim bg-slate-200/50 p-3 rounded-xl border border-brand-border/30">

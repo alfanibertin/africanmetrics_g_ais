@@ -15,6 +15,7 @@ import {
   AFRICAN_FERTILITY_DATA,
   CountryFertilityRecord,
 } from '../../data/healthFertilityData';
+import { WORLD_BANK_DATA_DATE } from '../../constants/dataSource';
 import { TrendingDown, Info, SlidersHorizontal, Eye } from 'lucide-react';
 
 interface FertilityTrendChartProps {
@@ -96,7 +97,7 @@ export const FertilityTrendChart: React.FC<FertilityTrendChartProps> = ({
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2.5 py-0.5 bg-teal-50 text-teal-800 border border-teal-200/70 rounded-md text-[11px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5">
               <TrendingDown className="w-3 h-3 text-teal-600" />
-              World Bank Time-Series Analysis (1990 – 2024)
+              World Bank Time-Series Analysis (1990 – 2024) • Data Source Date: {WORLD_BANK_DATA_DATE}
             </span>
           </div>
           <h3 className="text-xl font-bold tracking-tight text-slate-900">
@@ -216,7 +217,7 @@ export const FertilityTrendChart: React.FC<FertilityTrendChartProps> = ({
                 }
                 return [val, name];
               }}
-              labelFormatter={(label) => `Year: ${label}`}
+              labelFormatter={(label) => `World Bank WDI (${WORLD_BANK_DATA_DATE}) • Year: ${label}`}
             />
             <Legend
               wrapperStyle={{ fontSize: '11px', paddingTop: '16px' }}
@@ -360,6 +361,11 @@ export const FertilityTrendChart: React.FC<FertilityTrendChartProps> = ({
             When total fertility falls below 2.1, generations cease replacing themselves without net positive immigration.
           </p>
         </div>
+      </div>
+
+      <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between text-[11px] font-mono text-slate-400">
+        <span>Indicator: SP.DYN.TFRT.IN (Fertility rate, total births per woman)</span>
+        <span>Source: World Bank WDI • Data Source Date: {WORLD_BANK_DATA_DATE}</span>
       </div>
     </div>
   );

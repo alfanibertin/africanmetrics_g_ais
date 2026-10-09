@@ -33,6 +33,7 @@ import {
   SahelDataResponse, 
   SahelCountryCombinedMetrics 
 } from '../services/sahelDataService';
+import { WORLD_BANK_DATA_DATE } from '../constants/dataSource';
 import { AESFlagIcon } from './AESFlagIcon';
 
 export const SahelWorldBankIMFDataBoard: React.FC = () => {
@@ -129,7 +130,7 @@ export const SahelWorldBankIMFDataBoard: React.FC = () => {
               Sahel Alliance Macroeconomic Data Hub (MLI, NER, BFA)
             </h3>
             <p className="text-xs text-brand-muted mt-0.5">
-              Direct open-access data integration sourced from World Bank (v2) and IMF SDMX REST endpoints
+              Direct open-access data integration sourced from World Bank (v2 • Data Source Date: {WORLD_BANK_DATA_DATE}) and IMF SDMX REST endpoints
             </p>
           </div>
         </div>
@@ -352,7 +353,7 @@ export const SahelWorldBankIMFDataBoard: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between gap-3 text-[10px] text-brand-dim font-mono bg-white/40 p-3 rounded-2xl border border-brand-border/30">
         <div className="flex items-center gap-2">
           <Info className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-          <span><strong>World Bank Indicators:</strong> NY.GDP.MKTP.CD (GDP), NY.GDP.PCAP.CD (Capita), SP.POP.TOTL (Pop), FP.CPI.TOTL.ZG (CPI), SI.POV.DDAY (Poverty)</span>
+          <span><strong>World Bank Indicators (Data Source Date: {WORLD_BANK_DATA_DATE}):</strong> NY.GDP.MKTP.CD (GDP), NY.GDP.PCAP.CD (Capita), SP.POP.TOTL (Pop), FP.CPI.TOTL.ZG (CPI), SI.POV.DDAY (Poverty)</span>
         </div>
         <div>
           <span><strong>IMF WEO Indicators:</strong> NGDP_RPCH (Growth), PCPIEPCH (Inflation), BCA_NGDPD (Current Acc.)</span>

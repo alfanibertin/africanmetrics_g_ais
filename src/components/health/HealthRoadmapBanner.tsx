@@ -1,6 +1,7 @@
 import React from 'react';
 import { Sparkles, CheckCircle2, Clock, ExternalLink, ArrowRight, Layers } from 'lucide-react';
 import { HEALTH_ROADMAP_MODULES, HealthRoadmapModule } from '../../data/healthFertilityData';
+import { WORLD_BANK_DATA_DATE } from '../../constants/dataSource';
 
 interface HealthRoadmapBannerProps {
   activeModuleId: string;
@@ -26,7 +27,7 @@ export const HealthRoadmapBanner: React.FC<HealthRoadmapBannerProps> = ({
           </h3>
           <p className="text-xs text-slate-500 max-w-3xl leading-relaxed">
             This specialized Health intelligence pillar is configured for gradual multi-indicator expansion. 
-            Phase 1 initiates with official <strong>World Bank Fertility Rate</strong> data (<code className="font-mono text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded">SP.DYN.TFRT.IN</code>), tracking demographic momentum, childbearing patterns, and labor dependency ratios across 54 sovereign African nations.
+            Phase 1 initiates with official <strong>World Bank Fertility Rate</strong> data (<code className="font-mono text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded">SP.DYN.TFRT.IN</code> • Data Source Date: <span className="font-mono font-semibold text-emerald-800">{WORLD_BANK_DATA_DATE}</span>), tracking demographic momentum, childbearing patterns, and labor dependency ratios across 54 sovereign African nations.
           </p>
         </div>
 
@@ -37,7 +38,7 @@ export const HealthRoadmapBanner: React.FC<HealthRoadmapBannerProps> = ({
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold rounded-xl border border-emerald-200/70 transition-colors shadow-2xs"
           >
-            <span>World Bank SP.DYN.TFRT.IN</span>
+            <span>World Bank SP.DYN.TFRT.IN ({WORLD_BANK_DATA_DATE})</span>
             <ExternalLink className="w-3.5 h-3.5 text-emerald-600" />
           </a>
         </div>
@@ -94,7 +95,7 @@ export const HealthRoadmapBanner: React.FC<HealthRoadmapBannerProps> = ({
                 </p>
 
                 <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-[10px]">
-                  <span className="text-slate-400 font-mono">Source: World Bank WDI</span>
+                  <span className="text-slate-400 font-mono">Source: World Bank WDI • {WORLD_BANK_DATA_DATE}</span>
                   <a
                     href={mod.sourceUrl}
                     target="_blank"

@@ -991,6 +991,7 @@ app.get('/api/health/fertility', async (req, res) => {
       indicator: 'SP.DYN.TFRT.IN',
       indicatorName: 'Fertility rate, total (births per woman)',
       sourceUrl: 'https://data.worldbank.org/indicator/SP.DYN.TFRT.IN',
+      dataSourceDate: '2024-Dec-18',
       synchronizedAt: new Date().toISOString(),
       count: Object.keys(updates).length,
       updates,
@@ -1002,6 +1003,7 @@ app.get('/api/health/fertility', async (req, res) => {
       isLive: false,
       indicator: 'SP.DYN.TFRT.IN',
       sourceUrl: 'https://data.worldbank.org/indicator/SP.DYN.TFRT.IN',
+      dataSourceDate: '2024-Dec-18',
       error: error.message || 'World Bank API unreachable',
     });
   }

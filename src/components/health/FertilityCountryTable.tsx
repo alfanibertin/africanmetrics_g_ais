@@ -4,6 +4,7 @@ import {
   AFRICAN_FERTILITY_DATA,
   DemographicStage,
 } from '../../data/healthFertilityData';
+import { WORLD_BANK_DATA_DATE } from '../../constants/dataSource';
 import {
   Search,
   Filter,
@@ -104,7 +105,7 @@ export const FertilityCountryTable: React.FC<FertilityCountryTableProps> = ({
       c.rate1990,
       c.netChange2000toLatest,
       c.stage,
-      'World Bank SP.DYN.TFRT.IN'
+      `World Bank SP.DYN.TFRT.IN (${WORLD_BANK_DATA_DATE})`
     ]);
 
     const csvContent = [
@@ -171,7 +172,7 @@ export const FertilityCountryTable: React.FC<FertilityCountryTableProps> = ({
             Total Fertility Rate by African Nation
           </h3>
           <p className="text-xs text-slate-500 mt-1">
-            Official World Bank Indicator <code className="font-mono text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded">SP.DYN.TFRT.IN</code> measuring births per woman across sub-Saharan and North African economies.
+            Official World Bank Indicator <code className="font-mono text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded">SP.DYN.TFRT.IN</code> (Data Source Date: <span className="font-mono font-semibold text-emerald-800">{WORLD_BANK_DATA_DATE}</span>) measuring births per woman across sub-Saharan and North African economies.
           </p>
         </div>
 
@@ -236,23 +237,28 @@ export const FertilityCountryTable: React.FC<FertilityCountryTableProps> = ({
       </div>
 
       {/* Showing count indicator */}
-      <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
-        <span>
-          Showing <strong>{filteredCountries.length}</strong> of 54 African Sovereign States
-        </span>
+      <div className="flex flex-wrap items-center justify-between text-xs text-slate-500 pt-1 gap-2">
+        <div className="flex items-center gap-2">
+          <span>
+            Showing <strong>{filteredCountries.length}</strong> of 54 African Sovereign States
+          </span>
+          <span className="text-[10px] font-mono px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full font-semibold border border-slate-200">
+            Top 10 visible • Scroll down for rest
+          </span>
+        </div>
         <span className="text-[11px] text-slate-400 font-mono">
           Click any nation row to inspect trajectory on time-series chart
         </span>
       </div>
 
-      {/* Table Container */}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200/80">
-        <table className="w-full text-left text-xs text-slate-700">
-          <thead className="bg-slate-50/90 border-b border-slate-200 text-[11px] font-mono uppercase tracking-wider text-slate-600">
-            <tr>
+      {/* Table Container - Max height sized for top 10 rows with scroll down for the rest */}
+      <div className="overflow-x-auto overflow-y-auto max-h-[530px] rounded-2xl border border-slate-200/80 shadow-2xs scroll-smooth">
+        <table className="w-full text-left text-xs text-slate-700 relative">
+          <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 text-[11px] font-mono uppercase tracking-wider text-slate-600 shadow-xs">
+            <tr className="bg-slate-50">
               <th
                 onClick={() => toggleSort('rank')}
-                className="px-4 py-3.5 font-bold cursor-pointer hover:text-slate-900 select-none"
+                className="bg-slate-50 px-4 py-3.5 font-bold cursor-pointer hover:text-slate-900 select-none"
               >
                 <div className="flex items-center gap-1">
                   <span>#</span>
@@ -261,35 +267,35 @@ export const FertilityCountryTable: React.FC<FertilityCountryTableProps> = ({
               </th>
               <th
                 onClick={() => toggleSort('name')}
-                className="px-4 py-3.5 font-bold cursor-pointer hover:text-slate-900 select-none"
+                className="bg-slate-50 px-4 py-3.5 font-bold cursor-pointer hover:text-slate-900 select-none"
               >
                 <div className="flex items-center gap-1">
                   <span>Sovereign State</span>
                   <ArrowUpDown className="w-3 h-3 text-slate-400" />
                 </div>
               </th>
-              <th className="px-4 py-3.5 font-bold">Region</th>
+              <th className="bg-slate-50 px-4 py-3.5 font-bold">Region</th>
               <th
                 onClick={() => toggleSort('rate')}
-                className="px-4 py-3.5 font-bold cursor-pointer hover:text-slate-900 select-none text-right"
+                className="bg-slate-50 px-4 py-3.5 font-bold cursor-pointer hover:text-slate-900 select-none text-right"
               >
                 <div className="flex items-center justify-end gap-1">
                   <span>Latest Rate (Births/Woman)</span>
                   <ArrowUpDown className="w-3 h-3 text-slate-400" />
                 </div>
               </th>
-              <th className="px-4 py-3.5 font-bold text-right">2000 Baseline</th>
+              <th className="bg-slate-50 px-4 py-3.5 font-bold text-right">2000 Baseline</th>
               <th
                 onClick={() => toggleSort('change')}
-                className="px-4 py-3.5 font-bold cursor-pointer hover:text-slate-900 select-none text-right"
+                className="bg-slate-50 px-4 py-3.5 font-bold cursor-pointer hover:text-slate-900 select-none text-right"
               >
                 <div className="flex items-center justify-end gap-1">
                   <span>Net Change</span>
                   <ArrowUpDown className="w-3 h-3 text-slate-400" />
                 </div>
               </th>
-              <th className="px-4 py-3.5 font-bold">Demographic Stage</th>
-              <th className="px-4 py-3.5 font-bold text-center">Action</th>
+              <th className="bg-slate-50 px-4 py-3.5 font-bold">Demographic Stage</th>
+              <th className="bg-slate-50 px-4 py-3.5 font-bold text-center">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
@@ -392,6 +398,11 @@ export const FertilityCountryTable: React.FC<FertilityCountryTableProps> = ({
             })}
           </tbody>
         </table>
+      </div>
+
+      <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between text-[11px] font-mono text-slate-400">
+        <span>Indicator: SP.DYN.TFRT.IN (Fertility rate, total births per woman) • 54 African Economies</span>
+        <span>Source: World Bank WDI • Data Source Date: {WORLD_BANK_DATA_DATE}</span>
       </div>
     </div>
   );

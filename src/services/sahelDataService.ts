@@ -204,10 +204,10 @@ export class SahelDataService {
         return fallback;
       };
 
-      // Baseline fallback values if API returns partials
+      // Baseline fallback values if API returns partials (Updated with Niger MoF FY2026/2025 baseline)
       const fallbackBaselines: Record<string, any> = {
         MLI: { gdp: 21.3, gdpCap: 890, pop: 23.3, inf: 4.8, pov: 18.5, growth: 5.1, currentAcc: -5.4 },
-        NER: { gdp: 16.8, gdpCap: 610, pop: 27.2, inf: 3.9, pov: 42.1, growth: 6.9, currentAcc: -7.8 },
+        NER: { gdp: 21.65, gdpCap: 802, pop: 27.0, inf: 3.9, pov: 42.1, growth: 7.4, currentAcc: -7.8 },
         BFA: { gdp: 20.8, gdpCap: 830, pop: 23.2, inf: 4.2, pov: 25.3, growth: 5.3, currentAcc: -4.9 }
       };
 

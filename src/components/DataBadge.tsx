@@ -1,4 +1,5 @@
 import React from 'react';
+import { WORLD_BANK_DATA_DATE } from '../constants/dataSource';
 
 interface DataBadgeProps {
   source: 'static' | 'live' | 'simulated';
@@ -13,7 +14,7 @@ export const DataBadge: React.FC<DataBadgeProps> = ({ source, year }) => {
   if (source === 'live') {
     bgClass = 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
     dotClass = 'bg-emerald-500 animate-pulse';
-    label = 'Live (World Bank)';
+    label = `Live (World Bank • ${WORLD_BANK_DATA_DATE})`;
   } else if (source === 'simulated') {
     bgClass = 'bg-amber-500/10 text-amber-600 border-amber-500/20';
     dotClass = 'bg-amber-500';

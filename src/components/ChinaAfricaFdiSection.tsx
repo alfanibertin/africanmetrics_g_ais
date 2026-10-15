@@ -15,7 +15,8 @@ import {
   Table,
   Database,
   CheckCircle2,
-  Calendar
+  Calendar,
+  ArrowRight
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -37,7 +38,11 @@ import {
 import { ChinaFdiSectorTrends } from './ChinaFdiSectorTrends';
 import { ChineseCompaniesSection } from './ChineseCompaniesSection';
 
-export const ChinaAfricaFdiSection: React.FC = () => {
+interface ChinaAfricaFdiSectionProps {
+  onSwitchToEuropeHub?: () => void;
+}
+
+export const ChinaAfricaFdiSection: React.FC<ChinaAfricaFdiSectionProps> = ({ onSwitchToEuropeHub }) => {
   // Active view toggle: 'overview' | 'trends' | 'companies' | 'recipients' | 'dataset' | 'source'
   const [activeSubTab, setActiveSubTab] = useState<'overview' | 'trends' | 'companies' | 'recipients' | 'dataset' | 'source'>('overview');
   
@@ -135,6 +140,15 @@ export const ChinaAfricaFdiSection: React.FC = () => {
               <Download className="w-3.5 h-3.5 text-red-700" />
               <span>Export FDI Dataset</span>
             </button>
+            {onSwitchToEuropeHub && (
+              <button
+                onClick={onSwitchToEuropeHub}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 shadow-2xs transition cursor-pointer"
+              >
+                <span>View European FDI Hub</span>
+                <ArrowRight className="w-3.5 h-3.5 text-blue-700" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -166,78 +180,98 @@ export const ChinaAfricaFdiSection: React.FC = () => {
         </div>
 
         {/* Sub-section Navigation Tabs */}
-        <div className="flex items-center gap-1.5 p-1 bg-brand-input rounded-2xl border border-brand-border/50 max-w-fit flex-wrap">
-          <button
-            onClick={() => setActiveSubTab('overview')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-2 ${
-              activeSubTab === 'overview'
-                ? 'bg-white text-brand-text shadow-xs font-bold'
-                : 'text-brand-dim hover:text-brand-text hover:bg-white/40'
-            }`}
-          >
-            <BarChart3 className="w-3.5 h-3.5 text-red-700" />
-            <span>FDI Analytics & Trajectory</span>
-          </button>
+        <div className="border-b border-slate-200 pt-1.5">
+          <nav className="flex items-center space-x-1.5 sm:space-x-2 overflow-x-auto no-scrollbar scroll-smooth" aria-label="China FDI Navigation Tabs">
+            <button
+              onClick={() => setActiveSubTab('overview')}
+              className={`group relative px-3.5 py-2.5 text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-150 flex items-center gap-2 cursor-pointer border-b-2 -mb-[1px] outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded-t-lg ${
+                activeSubTab === 'overview'
+                  ? 'bg-red-50/90 border-t border-x border-red-200/90 border-b-2 border-b-red-600 text-red-950 font-semibold shadow-2xs'
+                  : 'border border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-200'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4 text-red-600 shrink-0" />
+              <span>FDI Analytics & Trajectory</span>
+              {activeSubTab === 'overview' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-red-600 ring-2 ring-red-200 shrink-0" aria-hidden="true" />
+              )}
+            </button>
 
-          <button
-            onClick={() => setActiveSubTab('companies')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-2 ${
-              activeSubTab === 'companies'
-                ? 'bg-white text-brand-text shadow-xs font-bold'
-                : 'text-brand-dim hover:text-brand-text hover:bg-white/40'
-            }`}
-          >
-            <Building2 className="w-3.5 h-3.5 text-red-700" />
-            <span>Chinese Companies by Country</span>
-          </button>
+            <button
+              onClick={() => setActiveSubTab('companies')}
+              className={`group relative px-3.5 py-2.5 text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-150 flex items-center gap-2 cursor-pointer border-b-2 -mb-[1px] outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded-t-lg ${
+                activeSubTab === 'companies'
+                  ? 'bg-red-50/90 border-t border-x border-red-200/90 border-b-2 border-b-red-600 text-red-950 font-semibold shadow-2xs'
+                  : 'border border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-200'
+              }`}
+            >
+              <Building2 className="w-4 h-4 text-red-600 shrink-0" />
+              <span>Chinese Companies by Country</span>
+              {activeSubTab === 'companies' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-red-600 ring-2 ring-red-200 shrink-0" aria-hidden="true" />
+              )}
+            </button>
 
-          <button
-            onClick={() => setActiveSubTab('trends')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-2 ${
-              activeSubTab === 'trends'
-                ? 'bg-white text-brand-text shadow-xs font-bold'
-                : 'text-brand-dim hover:text-brand-text hover:bg-white/40'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-700" />
-            <span>Sector Trends Summary</span>
-          </button>
+            <button
+              onClick={() => setActiveSubTab('trends')}
+              className={`group relative px-3.5 py-2.5 text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-150 flex items-center gap-2 cursor-pointer border-b-2 -mb-[1px] outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded-t-lg ${
+                activeSubTab === 'trends'
+                  ? 'bg-red-50/90 border-t border-x border-red-200/90 border-b-2 border-b-red-600 text-red-950 font-semibold shadow-2xs'
+                  : 'border border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-200'
+              }`}
+            >
+              <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Sector Trends Summary</span>
+              {activeSubTab === 'trends' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-red-600 ring-2 ring-red-200 shrink-0" aria-hidden="true" />
+              )}
+            </button>
 
-          <button
-            onClick={() => setActiveSubTab('recipients')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-2 ${
-              activeSubTab === 'recipients'
-                ? 'bg-white text-brand-text shadow-xs font-bold'
-                : 'text-brand-dim hover:text-brand-text hover:bg-white/40'
-            }`}
-          >
-            <Building2 className="w-3.5 h-3.5 text-teal-700" />
-            <span>Top Sovereign Recipients</span>
-          </button>
+            <button
+              onClick={() => setActiveSubTab('recipients')}
+              className={`group relative px-3.5 py-2.5 text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-150 flex items-center gap-2 cursor-pointer border-b-2 -mb-[1px] outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded-t-lg ${
+                activeSubTab === 'recipients'
+                  ? 'bg-red-50/90 border-t border-x border-red-200/90 border-b-2 border-b-red-600 text-red-950 font-semibold shadow-2xs'
+                  : 'border border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-200'
+              }`}
+            >
+              <Building2 className="w-4 h-4 text-teal-600 shrink-0" />
+              <span>Top Sovereign Recipients</span>
+              {activeSubTab === 'recipients' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-red-600 ring-2 ring-red-200 shrink-0" aria-hidden="true" />
+              )}
+            </button>
 
-          <button
-            onClick={() => setActiveSubTab('dataset')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-2 ${
-              activeSubTab === 'dataset'
-                ? 'bg-white text-brand-text shadow-xs font-bold'
-                : 'text-brand-dim hover:text-brand-text hover:bg-white/40'
-            }`}
-          >
-            <Table className="w-3.5 h-3.5 text-emerald-700" />
-            <span>Sector Aggregate Table</span>
-          </button>
+            <button
+              onClick={() => setActiveSubTab('dataset')}
+              className={`group relative px-3.5 py-2.5 text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-150 flex items-center gap-2 cursor-pointer border-b-2 -mb-[1px] outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded-t-lg ${
+                activeSubTab === 'dataset'
+                  ? 'bg-red-50/90 border-t border-x border-red-200/90 border-b-2 border-b-red-600 text-red-950 font-semibold shadow-2xs'
+                  : 'border border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-200'
+              }`}
+            >
+              <Table className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Sector Aggregate Table</span>
+              {activeSubTab === 'dataset' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-red-600 ring-2 ring-red-200 shrink-0" aria-hidden="true" />
+              )}
+            </button>
 
-          <button
-            onClick={() => setActiveSubTab('source')}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-2 ${
-              activeSubTab === 'source'
-                ? 'bg-white text-brand-text shadow-xs font-bold'
-                : 'text-brand-dim hover:text-brand-text hover:bg-white/40'
-            }`}
-          >
-            <Database className="w-3.5 h-3.5 text-indigo-700" />
-            <span>Data Source Summary</span>
-          </button>
+            <button
+              onClick={() => setActiveSubTab('source')}
+              className={`group relative px-3.5 py-2.5 text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-150 flex items-center gap-2 cursor-pointer border-b-2 -mb-[1px] outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded-t-lg ${
+                activeSubTab === 'source'
+                  ? 'bg-red-50/90 border-t border-x border-red-200/90 border-b-2 border-b-red-600 text-red-950 font-semibold shadow-2xs'
+                  : 'border border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-200'
+              }`}
+            >
+              <Database className="w-4 h-4 text-indigo-600 shrink-0" />
+              <span>Data Source Summary</span>
+              {activeSubTab === 'source' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-red-600 ring-2 ring-red-200 shrink-0" aria-hidden="true" />
+              )}
+            </button>
+          </nav>
         </div>
       </div>
 

@@ -105,78 +105,96 @@ export default function MigrationPage({ countries }: MigrationPageProps) {
       </div>
 
       {/* NAVIGATION TABS */}
-      <div className="border-b border-slate-200 overflow-x-auto">
-        <nav className="flex space-x-2 pb-px" aria-label="Migration Tabs">
+      <div className="border-b border-slate-200 pt-1.5">
+        <nav className="flex items-center space-x-1.5 sm:space-x-2 overflow-x-auto no-scrollbar scroll-smooth" aria-label="Migration Tabs">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`py-3 px-4 text-xs font-bold rounded-t-xl border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            className={`group relative px-3.5 py-2.5 text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-150 flex items-center gap-2 cursor-pointer border-b-2 -mb-[1px] outline-none focus-visible:ring-2 focus-visible:ring-teal-500 rounded-t-lg ${
               activeTab === 'overview'
-                ? 'border-teal-600 text-teal-700 bg-teal-50/50'
-                : 'border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300'
+                ? 'bg-teal-50/90 border-t border-x border-teal-200/90 border-b-2 border-b-teal-700 text-teal-950 font-semibold shadow-2xs'
+                : 'border border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-200'
             }`}
           >
-            <Users className="w-4 h-4" />
+            <Users className="w-4 h-4 text-teal-700 shrink-0" />
             <span>Continental Dynamics & Overview</span>
+            {activeTab === 'overview' && (
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-600 ring-2 ring-teal-200 shrink-0" aria-hidden="true" />
+            )}
           </button>
 
           <button
             onClick={() => setActiveTab('regional')}
-            className={`py-3 px-4 text-xs font-bold rounded-t-xl border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            className={`group relative px-3.5 py-2.5 text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-150 flex items-center gap-2 cursor-pointer border-b-2 -mb-[1px] outline-none focus-visible:ring-2 focus-visible:ring-teal-500 rounded-t-lg ${
               activeTab === 'regional'
-                ? 'border-teal-600 text-teal-700 bg-teal-50/50'
-                : 'border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300'
+                ? 'bg-teal-50/90 border-t border-x border-teal-200/90 border-b-2 border-b-teal-700 text-teal-950 font-semibold shadow-2xs'
+                : 'border border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-200'
             }`}
           >
-            <BarChart3 className="w-4 h-4" />
+            <BarChart3 className="w-4 h-4 text-teal-700 shrink-0" />
             <span>Regional Hotspots by Origin</span>
+            {activeTab === 'regional' && (
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-600 ring-2 ring-teal-200 shrink-0" aria-hidden="true" />
+            )}
           </button>
 
           <button
             onClick={() => setActiveTab('destinations')}
-            className={`py-3 px-4 text-xs font-bold rounded-t-xl border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            className={`group relative px-3.5 py-2.5 text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-150 flex items-center gap-2 cursor-pointer border-b-2 -mb-[1px] outline-none focus-visible:ring-2 focus-visible:ring-teal-500 rounded-t-lg ${
               activeTab === 'destinations'
-                ? 'border-teal-600 text-teal-700 bg-teal-50/50'
-                : 'border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300'
+                ? 'bg-teal-50/90 border-t border-x border-teal-200/90 border-b-2 border-b-teal-700 text-teal-950 font-semibold shadow-2xs'
+                : 'border border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-200'
             }`}
           >
-            <Compass className="w-4 h-4" />
+            <Compass className="w-4 h-4 text-teal-700 shrink-0" />
             <span>Top Destinations & Bilateral Corridors</span>
+            {activeTab === 'destinations' && (
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-600 ring-2 ring-teal-200 shrink-0" aria-hidden="true" />
+            )}
           </button>
 
           <button
             onClick={() => setActiveTab('braindrain')}
-            className={`py-3 px-4 text-xs font-bold rounded-t-xl border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            className={`group relative px-3.5 py-2.5 text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-150 flex items-center gap-2 cursor-pointer border-b-2 -mb-[1px] outline-none focus-visible:ring-2 focus-visible:ring-teal-500 rounded-t-lg ${
               activeTab === 'braindrain'
-                ? 'border-teal-600 text-teal-700 bg-teal-50/50'
-                : 'border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300'
+                ? 'bg-teal-50/90 border-t border-x border-teal-200/90 border-b-2 border-b-teal-700 text-teal-950 font-semibold shadow-2xs'
+                : 'border border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-200'
             }`}
           >
-            <HeartPulse className="w-4 h-4" />
+            <HeartPulse className="w-4 h-4 text-teal-700 shrink-0" />
             <span>Brain Drain Impacts & Fiscal Model</span>
+            {activeTab === 'braindrain' && (
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-600 ring-2 ring-teal-200 shrink-0" aria-hidden="true" />
+            )}
           </button>
 
           <button
             onClick={() => setActiveTab('return')}
-            className={`py-3 px-4 text-xs font-bold rounded-t-xl border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            className={`group relative px-3.5 py-2.5 text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-150 flex items-center gap-2 cursor-pointer border-b-2 -mb-[1px] outline-none focus-visible:ring-2 focus-visible:ring-teal-500 rounded-t-lg ${
               activeTab === 'return'
-                ? 'border-teal-600 text-teal-700 bg-teal-50/50'
-                : 'border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300'
+                ? 'bg-teal-50/90 border-t border-x border-teal-200/90 border-b-2 border-b-teal-700 text-teal-950 font-semibold shadow-2xs'
+                : 'border border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-200'
             }`}
           >
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw className="w-4 h-4 text-teal-700 shrink-0" />
             <span>Return Migration & Brain Circulation</span>
+            {activeTab === 'return' && (
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-600 ring-2 ring-teal-200 shrink-0" aria-hidden="true" />
+            )}
           </button>
 
           <button
             onClick={() => setActiveTab('dossiers')}
-            className={`py-3 px-4 text-xs font-bold rounded-t-xl border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            className={`group relative px-3.5 py-2.5 text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-150 flex items-center gap-2 cursor-pointer border-b-2 -mb-[1px] outline-none focus-visible:ring-2 focus-visible:ring-teal-500 rounded-t-lg ${
               activeTab === 'dossiers'
-                ? 'border-teal-600 text-teal-700 bg-teal-50/50'
-                : 'border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300'
+                ? 'bg-teal-50/90 border-t border-x border-teal-200/90 border-b-2 border-b-teal-700 text-teal-950 font-semibold shadow-2xs'
+                : 'border border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-200'
             }`}
           >
-            <Building2 className="w-4 h-4" />
+            <Building2 className="w-4 h-4 text-teal-700 shrink-0" />
             <span>Country Dossiers & CSV Export</span>
+            {activeTab === 'dossiers' && (
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-600 ring-2 ring-teal-200 shrink-0" aria-hidden="true" />
+            )}
           </button>
         </nav>
       </div>

@@ -12,10 +12,11 @@ import RegionalPage from './pages/RegionalPage';
 import CountryDetailPage from './pages/CountryDetailPage';
 import HealthPage from './pages/HealthPage';
 import MigrationPage from './pages/MigrationPage';
+import EuropePage from './pages/EuropePage';
 
 export default function App() {
   // Navigation State
-  const [activePage, setActivePage] = useState<'all' | 'sahel' | 'regional' | 'detail' | 'health' | 'migration'>('all');
+  const [activePage, setActivePage] = useState<'all' | 'sahel' | 'regional' | 'europe' | 'detail' | 'health' | 'migration'>('all');
   
   // Core State
   const [countries, setCountries] = useState<Country[]>(COUNTRIES);
@@ -150,40 +151,41 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 relative z-10">
         
         {/* Dynamic Section Descriptor Block */}
-        <div className="pb-6 border-b border-brand-border flex flex-col md:flex-row md:items-center md:justify-between gap-4" id="dashboard-header">
+        <div className="pb-6 border-b border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-4" id="dashboard-header">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="px-2.5 py-0.5 bg-slate-500/10 border border-slate-500/15 text-[11px] text-slate-700 font-mono rounded-full uppercase tracking-wider font-semibold">
-                {activePage === 'all' && 'Surveillance Engine'}
-                {activePage === 'migration' && 'International Migration & Diaspora Intelligence'}
-                {activePage === 'health' && 'Health & Demographic Surveillance'}
-                {activePage === 'sahel' && 'Geopolitical Policy Explorer'}
-                {activePage === 'regional' && 'China-Africa FDI & Regional Hub'}
-                {activePage === 'detail' && 'Surveillance Dossier'}
-              </span>
+            <div className="text-xs font-mono font-semibold tracking-wider uppercase text-teal-800 mb-1">
+              {activePage === 'all' && 'Surveillance Engine · Continental Overview'}
+              {activePage === 'migration' && 'Demographic Pillar · Migration & Diaspora'}
+              {activePage === 'health' && 'Demographic Surveillance · Health & Transition'}
+              {activePage === 'sahel' && 'Geopolitical Explorer · Alliance of Sahel States'}
+              {activePage === 'regional' && 'Foreign Direct Investment · China-Africa Hub'}
+              {activePage === 'europe' && 'Foreign Direct Investment · Team Europe Hub'}
+              {activePage === 'detail' && 'Sovereign Dossier · Diagnostic Deep Dive'}
             </div>
-            <h2 className="text-2xl font-bold tracking-tight text-brand-text">
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900">
               {activePage === 'all' && 'All Africa Macroeconomic Indicators'}
               {activePage === 'migration' && 'International Migration of African Population: Destinations, Brain Drain & Return Dynamics'}
               {activePage === 'health' && 'African Health & Demographics: Continental Comparisons & 2050/2100 Projections'}
               {activePage === 'sahel' && 'Sahel Alliance Interactive Explorer (Burkina, Mali, Niger)'}
               {activePage === 'regional' && 'China-Africa Foreign Direct Investment (FDI) & Regional Hub'}
+              {activePage === 'europe' && 'European Foreign Direct Investment (FDI) & Global Gateway Hub in Africa'}
               {activePage === 'detail' && `Surveillance Dossier: ${selectedDetailCountry.name}`}
             </h2>
-            <p className="text-xs text-brand-muted mt-1 max-w-3xl">
+            <p className="text-xs text-slate-600 mt-1.5 max-w-3xl leading-relaxed">
               {activePage === 'all' && 'Comprehensive surveillance across 55 African sovereign economies with interactive charting, filters, and smart LLM database updates.'}
               {activePage === 'migration' && 'Empirical surveillance grounded in the IOM World Migration Report (https://worldmigrationreport.iom.int/), tracking 40.4M African migrants, intra-African labor networks, medical and STEM brain drain, reverse taxpayer subsidies, and returnee brain circulation models.'}
               {activePage === 'health' && 'World Bank indicator SP.DYN.TFRT.IN surveillance tracking fertility rates across 54 African nations, global continental benchmarking (Europe, Asia, Americas), and UN demographic forecasts to 2050 & 2100.'}
               {activePage === 'sahel' && 'Logistical corridor routing simulation, border security allocations, and defense-vs-development spending trade-off analysis.'}
               {activePage === 'regional' && 'Surveillance and sector intelligence on Chinese Foreign Direct Investment stock ($53.8B), 5-year CAGR trajectory, regional allocations, and top sovereign destinations.'}
+              {activePage === 'europe' && 'Granular surveillance of Europe as Africa’s largest collective foreign investment partner ($268.4B stock), spanning EU Global Gateway corridors, offshore gas/clean energy, automotive nearshoring, and multinational company footprints.'}
               {activePage === 'detail' && 'AI-powered macroeconomic diagnostic tools, fiscal risk forecasting, and comprehensive structural policy recommendations.'}
             </p>
           </div>
           <div className="text-left md:text-right shrink-0">
-            <span className="text-[11px] text-brand-dim font-mono block">
+            <span className="text-[11px] text-slate-500 font-mono block">
               Data Synchronization Cycle:
             </span>
-            <span className="text-xs font-mono font-bold text-brand-text bg-slate-300/30 px-2 py-1 rounded-md border border-slate-300/40 inline-block mt-0.5">
+            <span className="text-xs font-mono font-medium text-slate-700 bg-slate-100 px-2 py-1 rounded border border-slate-200 inline-block mt-0.5">
               {lastUpdated || 'Baseline dataset (static)'}
             </span>
           </div>
@@ -213,7 +215,17 @@ export default function App() {
         )}
 
         {activePage === 'regional' && (
-          <RegionalPage countries={countries} />
+          <RegionalPage 
+            countries={countries} 
+            onSwitchToEuropeHub={() => setActivePage('europe')}
+          />
+        )}
+
+        {activePage === 'europe' && (
+          <EuropePage 
+            countries={countries} 
+            onSwitchToChinaHub={() => setActivePage('regional')}
+          />
         )}
 
         {activePage === 'detail' && (

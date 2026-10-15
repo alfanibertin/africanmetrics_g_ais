@@ -4,12 +4,13 @@ import { ChinaAfricaFdiSection } from '../components/ChinaAfricaFdiSection';
 
 interface RegionalPageProps {
   countries: Country[];
+  onSwitchToEuropeHub?: () => void;
 }
 
-export default function RegionalPage({ countries }: RegionalPageProps) {
+export default function RegionalPage({ countries, onSwitchToEuropeHub }: RegionalPageProps) {
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
-      <ChinaAfricaFdiSection />
+      <ChinaAfricaFdiSection onSwitchToEuropeHub={onSwitchToEuropeHub} />
     </div>
   );
 }
